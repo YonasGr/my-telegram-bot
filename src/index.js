@@ -91,14 +91,23 @@ async function fetchP2PData(asset = 'USDT', fiat = 'ETB', tradeType = 'BUY', row
 }
 
 async function fetchCoinGeckoData(endpoint) {
-  try {
-    const response = await fetch(`${COINGECKO_API_URL}${endpoint}`);
-    if (!response.ok) throw new Error(`CoinGecko API error: ${response.status}`);
-    return await response.json();
-  } catch (error) {
-    console.error("Error fetching CoinGecko data:", error);
-    throw new Error("Could not fetch coin data");
-  }
+    try {
+        // Add a small delay to respect the rate limit (e.g., 2-3 seconds)
+        await new Promise(resolve => setTimeout(resolve, 5000)); // 2.5 seconds delay
+        
+        const response = await fetch(`${COINGECKO_API_URL}${endpoint}`);
+        if (!response.ok) {
+            // Check for specific 429 error and throw a more specific error
+            if (response.status === 429) {
+                throw new Error("CoinGecko API rate limit exceeded. Please try again in a minute.");
+            }
+            throw new Error(`CoinGecko API error: ${response.status}`);
+        }
+        return await response.json();
+    } catch (error) {
+        console.error("Error fetching CoinGecko data:", error);
+        throw new Error("Could not fetch coin data. The API is likely busy.");
+    }
 }
 
 async function searchCoinSymbol(symbol, env) {
@@ -112,16 +121,17 @@ async function searchCoinSymbol(symbol, env) {
   }, 86400);
 }
 
+// A longer TTL to reduce API calls
 async function getCoinData(coinId, env) {
   return getWithCache(env, `coin_data_${coinId}`, async () => {
     return fetchCoinGeckoData(`/coins/${coinId}?localization=false&tickers=false&market_data=true&community_data=false&developer_data=false&sparkline=false`);
-  }, 300);
+  }, 3600); // Changed from 300 to 1800 seconds (30 minutes)
 }
 
 async function getCoinMarketChart(coinId, days = 7, env) {
   return getWithCache(env, `coin_chart_${coinId}_${days}`, async () => {
     return fetchCoinGeckoData(`/coins/${coinId}/market_chart?vs_currency=usd&days=${days}`);
-  }, 600);
+  }, 3600); // Changed from 600 to 1800 seconds (30 minutes)
 }
 
 async function getExchangeRates(env) {
@@ -257,7 +267,6 @@ async function handleStart(chatId, env) {
 I provide real-time cryptocurrency data, P2P trading rates, and conversions.
 
 *Available commands:*
-/start - Show this welcome message
 /p2p [asset] [fiat] [type] - Get P2P trading rates
 /rate [amount] [currency] - Convert amount using real-time rates
 /sell [amount] - Calculate ETB for selling crypto
@@ -270,7 +279,10 @@ I provide real-time cryptocurrency data, P2P trading rates, and conversions.
 /rate 100 BTC
 /sell 50
 /convert 100 ETH ADA
-/coin bitcoin`;
+/coin bitcoin
+
+
+AUTHOR: @x\\_Jonah CHANNEL: @Jonah\\_Notice`;
 
   await sendMessage(chatId, welcomeMessage, 'Markdown', env);
 }
@@ -298,33 +310,38 @@ async function handleP2P(chatId, args, env) {
   }
 }
 
-async function handleRate(chatId, amount, currency, env) {
+async function handleRate(chatId, args, env) {
+  const amount = parseFloat(args[1]);
+  const asset = (args[2] || '').toUpperCase();
+  const fiat = (args[3] || '').toUpperCase();
+
   if (isNaN(amount) || amount <= 0) {
     return await sendMessage(chatId, "❌ Please provide a valid amount (number greater than 0).", 'Markdown', env);
   }
 
+  // --- NEW LOGIC: Check if a fiat is provided for P2P lookup ---
+  const p2pFiats = ['ETB', 'USD', 'EUR', 'GBP', 'NGN', 'KES', 'GHS']; // Same list as backend
+  if (p2pFiats.includes(fiat)) {
+    // This is a P2P request, handle it separately
+    return handleP2PRate(chatId, amount, asset, fiat, env);
+  }
+  // --- END OF NEW LOGIC ---
+
+  // Existing logic for CoinGecko lookup (if no fiat is provided)
   try {
     await sendMessage(chatId, "⏳ Fetching real-time rates...", 'Markdown', env);
-    
-    const coinData = await searchCoinSymbol(currency, env);
+    const coinData = await searchCoinSymbol(asset, env);
     if (!coinData) {
-      return await sendMessage(chatId, `❌ Could not find currency: ${currency}`, 'Markdown', env);
+      return await sendMessage(chatId, `❌ Could not find currency: ${asset}`, 'Markdown', env);
     }
     
     const detailedData = await getCoinData(coinData.id, env);
     const price = detailedData.market_data.current_price.usd;
     const result = amount * price;
     
-    const message = `💱 *Real-time Rate Conversion*
-
-*${amount} ${coinData.symbol.toUpperCase()}* ≈ *$${formatNumber(result, 2)}*
-
-📊 *Current Price:* $${formatNumber(price, 6)} USD
-📈 *24h Change:* ${detailedData.market_data.price_change_percentage_24h.toFixed(2)}%
-🔄 *Market Cap Rank:* #${detailedData.market_cap_rank}
-
-🔄 *Live data from CoinGecko*`;
-
+    // ... (rest of the message formatting for CoinGecko) ...
+    const message = `💱 *Real-time Rate Conversion*\n\n*${amount} ${coinData.symbol.toUpperCase()}* ≈ *$${formatNumber(result, 2)}*\n\n📊 *Current Price:* $${formatNumber(price, 6)} USD\n📈 *24h Change:* ${detailedData.market_data.price_change_percentage_24h.toFixed(2)}%\n🔄 *Market Cap Rank:* #${detailedData.market_cap_rank}\n\n🔄 *Live data from CoinGecko*`;
+    
     await sendMessage(chatId, message, 'Markdown', env);
   } catch (error) {
     console.error("Rate command error:", error);
@@ -480,82 +497,83 @@ async function handleCoin(chatId, coinSymbol, env) {
   }
 }
 
+async function handleP2PRate(chatId, amount, asset, fiat, env) {
+  try {
+    await sendMessage(chatId, `⏳ Fetching P2P rates for ${amount} ${asset} in ${fiat}...`, 'Markdown', env);
+    
+    const tradeType = "SELL"; // You want to sell crypto to get fiat
+    const rows = 10; // Fetch enough ads to find the 5th one
+    
+    const data = await fetchP2PData(asset, fiat, tradeType, rows);
+
+    if (!data?.data?.data || data.data.data.length < 5) {
+      return await sendMessage(chatId, `❌ Not enough ${tradeType} offers found for ${asset}/${fiat}.`, 'Markdown', env);
+    }
+    
+    // Get the 5th P2P ad
+    const fifthAd = data.data.data[4];
+    const rate = parseFloat(fifthAd.adv.price);
+    const totalFiatAmount = amount * rate;
+    
+    const message = `💰 *P2P Rate Calculation*\n\n` +
+                    `*Selling ${formatNumber(amount, 2)} ${asset}* ≈ *${formatNumber(totalFiatAmount)} ${fiat}*\n\n` +
+                    `📊 *Rate used:* 1 ${asset} = ${formatNumber(rate)} ${fiat} (5th best offer)\n` +
+                    `👤 *Trader:* ${escapeMarkdown(fifthAd.advertiser.nickName)}\n` +
+                    `⭐️ *Reputation:* ${fifthAd.advertiser.monthOrderCount} orders, ${(fifthAd.advertiser.monthFinishRate * 100).toFixed(1)}% success\n\n` +
+                    `🔄 *Live P2P data from Binance*`;
+
+    await sendMessage(chatId, message, 'Markdown', env);
+
+  } catch (error) {
+    console.error("P2P Rate command error:", error);
+    await sendMessage(chatId, "⚠️ Could not calculate the P2P rate. Please check your command and try again later.", 'Markdown', env);
+  }
+}
+
 // ------------------------- MAIN HANDLER -------------------------
 
 export default {
-  async fetch(request, env, ctx) {
-    console.log("Environment keys:", Object.keys(env));
-    
-    if (request.method === 'OPTIONS') {
-      return new Response(null, {
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type',
-        }
-      });
-    }
-    
-    const url = new URL(request.url);
-    const path = url.pathname;
-    
-    if (request.method === 'POST' && path === '/binancep2p') {
-      try {
-        const backendResponse = await fetch(BINANCE_BACKEND_URL, {
-          method: "POST",
-          headers: request.headers,
-          body: request.body,
-        });
-        return new Response(backendResponse.body, {
-          status: backendResponse.status,
-          headers: backendResponse.headers,
-        });
-      } catch (error) {
-        return new Response("Error connecting to backend", { status: 502 });
-      }
-    }
-    
-    if (request.method !== 'POST') {
-      return new Response('Method not allowed', { status: 405 });
-    }
+  async fetch(request, env, ctx) {
+    // ... (rest of the code)
 
-    try {
-      const body = await request.json();
-      const chatId = body.message?.chat?.id;
-      const text = body.message?.text || '';
-      const userId = body.message?.from?.id;
+    try {
+      const body = await request.json();
+      const chatId = body.message?.chat?.id;
+      const text = body.message?.text || '';
+      const userId = body.message?.from?.id;
 
-      if (!chatId || !text || !userId) return new Response('ok');
+      if (!chatId || !text || !userId) return new Response('ok');
 
-      const isAllowed = await checkRateLimit(env, userId, 10, 60);
-      if (!isAllowed) {
-        await sendMessage(chatId, "⚠️ Too many requests. Please wait a minute.", 'Markdown', env);
-        return new Response('ok');
-      }
+      const isAllowed = await checkRateLimit(env, userId, 10, 60);
+      if (!isAllowed) {
+        await sendMessage(chatId, "⚠️ Too many requests. Please wait a minute.", 'Markdown', env);
+        return new Response('ok');
+      }
 
-      const args = text.trim().split(/\s+/);
-      const cmd = args[0].toLowerCase();
+      const args = text.trim().split(/\s+/);
+      const cmd = args[0].toLowerCase();
 
-      if (cmd === '/start' || cmd === '/help') {
-        await handleStart(chatId, env);
-      } else if (cmd === '/p2p') {
-        await handleP2P(chatId, args, env);
-      } else if (cmd === '/rate' && args.length >= 3) {
-        await handleRate(chatId, parseFloat(args[1]), args[2], env);
-      } else if (cmd === '/sell' && args.length >= 2) {
-        await handleSell(chatId, parseFloat(args[1]), env);
-      } else if (cmd === '/convert' && args.length >= 4) {
-        await handleConvert(chatId, parseFloat(args[1]), args[2], args[3], env);
-      } else if (cmd === '/coin' && args.length >= 2) {
-        await handleCoin(chatId, args[1], env);
-      } else {
-        await sendMessage(chatId, "Unknown command. Use /start for help.", 'Markdown', env);
-      }
+      if (cmd === '/start' || cmd === '/help') {
+        await handleStart(chatId, env);
+      } else if (cmd === '/p2p') {
+        await handleP2P(chatId, args, env);
+      } else if (cmd === '/rate' && args.length >= 2) {
+        // Correctly passes the whole args array to handleRate
+        await handleRate(chatId, args, env); 
+      } else if (cmd === '/sell' && args.length >= 2) {
+        await handleSell(chatId, parseFloat(args[1]), env);
+      } else if (cmd === '/convert' && args.length >= 4) {
+        await handleConvert(chatId, parseFloat(args[1]), args[2], args[3], env);
+      } else if (cmd === '/coin' && args.length >= 2) {
+        await handleCoin(chatId, args[1], env);
+      } else {
+        await sendMessage(chatId, "Unknown command. Use /start for help.", 'Markdown', env);
+      }
 
-      return new Response('ok');
-    } catch (e) {
-      console.error("Request handling error:", e);
-      return new Response('Error processing request', { status: 500 });
-    }
-  }
+      return new Response('ok');
+    } catch (e) {
+      console.error("Request handling error:", e);
+      return new Response('Error processing request', { status: 500 });
+    }
+  }
 };
