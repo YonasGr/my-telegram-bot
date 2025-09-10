@@ -13,6 +13,12 @@ function escapeMarkdown(text) {
   return text.split('').map(c => escapeChars.includes(c) ? '\\' + c : c).join('');
 }
 
+function escapeMarkdownV2(text) {
+  if (typeof text !== 'string') return '';
+  const escapeChars = '_*[]()~`>#+-=|{}.!\\';
+  return text.split('').map(c => escapeChars.includes(c) ? '\\' + c : c).join('');
+}
+
 function formatNumber(value) {
   if (value === null || value === undefined || isNaN(value)) return 'N/A';
   return Number(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -223,10 +229,10 @@ async function handleP2P(chatId, env) {
       const adv = ad.adv;
       const payMethods = adv.tradeMethods?.map(m => m.tradeMethodShortName || m.tradeMethodName).join(", ") || "Bank";
       
-      message += `*${i+1}\\. ${escapeMarkdown(trader.nickName)}*\n`;
+      message += `*${i+1}\\. ${escapeMarkdownV2(trader.nickName)}*\n`;
       message += `💰 Rate: *${formatNumber(adv.price)} ETB/USDT*\n`;
       message += `📊 Limits: ${formatNumber(adv.minSingleTransAmount)} \\- ${formatNumber(adv.maxSingleTransAmount)} ETB\n`;
-      message += `⏱️ Payment: ${adv.payTimeLimit} min \\| 💳 ${escapeMarkdown(payMethods)}\n`;
+      message += `⏱️ Payment: ${adv.payTimeLimit} min \\| 💳 ${escapeMarkdownV2(payMethods)}\n`;
       message += `✅ Orders: ${trader.monthOrderCount} \\| Success: ${(trader.monthFinishRate * 100).toFixed(1)}%\n\n`;
     });
     
@@ -260,7 +266,7 @@ async function handleRate(chatId, amount, currency, env) {
       const trader = ad.advertiser;
       const adv = ad.adv;
       
-      message += `*${i+1}\\. ${escapeMarkdown(trader.nickName)}*\n`;
+      message += `*${i+1}\\. ${escapeMarkdownV2(trader.nickName)}*\n`;
       message += `💰 *${formatNumber(adv.price)} ETB/USDT*\n`;
       message += `📊 Min: ${formatNumber(adv.minSingleTransAmount)} ETB\n\n`;
     });
@@ -298,7 +304,7 @@ async function handleSell(chatId, amount, env) {
 • ${amount} USDT = *${formatNumber(totalETB)} ETB*
 
 👤 *Recommended Seller:*
-• Name: ${escapeMarkdown(best.advertiser.nickName)}
+• Name: ${escapeMarkdownV2(best.advertiser.nickName)}
 • Orders: ${best.advertiser.monthOrderCount}
 • Success Rate: ${(best.advertiser.monthFinishRate*100).toFixed(1)}%
 
@@ -405,7 +411,7 @@ async function handleCoin(chatId, symbol, env) {
     const changeColor = change24h > 0 ? '🟢' : change24h < 0 ? '🔴' : '🟡';
     
     const message = `
-🪙 *${escapeMarkdown(data.name)} \\(${symbol.toUpperCase()}\\)*
+🪙 *${escapeMarkdownV2(data.name)} \\(${symbol.toUpperCase()}\\)*
 
 💰 *Price:* $${formatNumber(currentPrice)}
 ${changeEmoji} *24h Change:* ${changeColor} ${formatNumber(change24h)}%
