@@ -171,7 +171,7 @@ async function getP2PData(amount = null, tradeType = 'BUY') {
 
   try {
     // Use local backend proxy instead of direct Binance API call
-    const res = await fetch('http://localhost:3001/binancep2p', {
+    const res = await fetch('https://my-telegram-bot-backend.onrender.com/', {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json'
@@ -199,19 +199,24 @@ async function getP2PData(amount = null, tradeType = 'BUY') {
 
 async function handleStart(chatId, env) {
   const message = `
-🤖 *Welcome to Binance P2P ETB Bot\\!*
+🤖 *Welcome to Binance P2P ETB Bot!*
 
 🚀 *Available Commands:*
 
-💱 \`/p2p\` \\- Top 10 P2P rates with limits & trader info
-📊 \`/rate [amount] [currency]\` \\- Specific amount rates
-💰 \`/sell [amount] usdt etb\` \\- Calculate ETB for selling USDT  
-🔄 \`/convert [amount] [from] [to]\` \\- Convert cryptocurrencies
-🪙 \`/coin [symbol]\` \\- Coin info \\+ market chart
+💱 \`/p2p\` - Top 10 P2P rates with limits & trader info  
+📊 \`/rate [amount] [currency]\` - Specific amount rates  
+💰 \`/sell [amount] usdt etb\` - Calculate ETB for selling USDT  
+🔄 \`/convert [amount] [from] [to]\` - Convert cryptocurrencies  
+🪙 \`/coin [symbol]\` - Coin info + market chart  
 
-📡 *Live data from Binance P2P \\& CoinGecko*
-🔒 *Secure \\& Fast \\- No registration required\\!*
+📡 *Live data from Binance P2P & CoinGecko*  
+🔒 *Secure & Fast - No registration required!*
+
+👤 *Author:* \`@x_Jonah\`  
+📣 *Channel:* \`@Jonah_Notice\`  
+✉️ *Contact for suggestions:* \`@x_Jonah\`
 `;
+
   await sendMessage(chatId, message, 'Markdown', env);
 }
 
