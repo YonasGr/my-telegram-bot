@@ -27,15 +27,23 @@ async function sendMessage(chatId, text, parseMode = 'Markdown', env) {
       throw new Error("Bot token not configured");
     }
     
-    const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        chat_id: chatId, 
-        text, 
-        parse_mode: parseMode 
-      })
-    });
+const response = await fetch("https://p2pbotbackend.onrender.com/binancep2p", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    page: 1,
+    rows: 10,
+    payTypes: ["BANK"],
+    countries: ["ET"],
+    fiat: "ETB",
+    tradeType: "BUY",
+    asset: "USDT"
+  })
+});
+
+const data = await response.json();
+console.log(data);
+
     
     if (!response.ok) {
       const errorDetails = await response.text();
