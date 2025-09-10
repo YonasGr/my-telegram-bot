@@ -27,7 +27,7 @@ async function sendMessage(chatId, text, parseMode = 'Markdown', env) {
       throw new Error("Bot token not configured");
     }
     
-const telegramUrl = `https://api.telegram.org/bot${botToken}/sendMessage`;
+    const telegramUrl = `https://api.telegram.org/bot${botToken}/sendMessage`;
     const response = await fetch(telegramUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -197,10 +197,10 @@ async function handleStart(chatId, env) {
 
 Commands:
 /p2p - Top 10 general P2P rates for USDT in ETB
-/rate <amount> <currency> - Top P2P rates for specific amount
-/sell <amount> usdt etb - Calculate ETB for selling USDT
-/convert <amount> <from_currency> <to_currency> - Convert crypto
-/coin <coin_symbol> - Get coin info and 7D chart
+/rate \`amount\` \`currency\` - Top P2P rates for specific amount
+/sell \`amount\` usdt etb - Calculate ETB for selling USDT
+/convert \`amount\` \`from_currency\` \`to_currency\` - Convert crypto
+/coin \`coin_symbol\` - Get coin info and 7D chart
 
 Information is fetched live from Binance P2P and CoinGecko.
 `;
