@@ -8,3 +8,4 @@ kv_namespaces = [
 
 # Add this for ES modules
 compatibility_flags = ["nodejs_compat"]
+
