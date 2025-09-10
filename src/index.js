@@ -27,22 +27,16 @@ async function sendMessage(chatId, text, parseMode = 'Markdown', env) {
       throw new Error("Bot token not configured");
     }
     
-const response = await fetch("https://p2pbotbackend.onrender.com/binancep2p", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    page: 1,
-    rows: 10,
-    payTypes: ["BANK"],
-    countries: ["ET"],
-    fiat: "ETB",
-    tradeType: "BUY",
-    asset: "USDT"
-  })
-});
-
-const data = await response.json();
-console.log(data);
+const telegramUrl = `https://api.telegram.org/bot${botToken}/sendMessage`;
+    const response = await fetch(telegramUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        chat_id: chatId, 
+        text, 
+        parse_mode: parseMode 
+      })
+    });
 
     
     if (!response.ok) {
@@ -160,7 +154,6 @@ async function getCoinIdFromSymbol(symbol, env) {
 
 async function getP2PData(amount = null, tradeType = 'BUY') {
   const payload = {
-    proMerchantAds: false,
     page: 1,
     rows: 10,
     payTypes: [],
@@ -171,31 +164,27 @@ async function getP2PData(amount = null, tradeType = 'BUY') {
   };
 
   try {
-    const res = await fetch(BINANCE_P2P_URL, {
+    // Use local backend proxy instead of direct Binance API call
+    const res = await fetch('http://localhost:3001/binancep2p', {
       method: 'POST',
       headers: { 
-        'Content-Type': 'application/json',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-        'Accept': 'application/json',
-        'Accept-Language': 'en-US,en;q=0.9',
-        'Origin': 'https://p2p.binance.com',
-        'Referer': 'https://p2p.binance.com/',
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify(payload)
     });
     
     if (!res.ok) {
-      console.error(`Binance P2P API error: ${res.status} ${res.statusText}`);
+      console.error(`Backend API error: ${res.status} ${res.statusText}`);
       // Try to get more error details
       const errorText = await res.text();
-      console.error("Binance error details:", errorText);
-      throw new Error(`Binance P2P API error: ${res.status}`);
+      console.error("Backend error details:", errorText);
+      throw new Error(`Backend API error: ${res.status}`);
     }
     
     const data = await res.json();
     return data.data || [];
   } catch (e) {
-    console.error("Error fetching Binance P2P data:", e);
+    console.error("Error fetching P2P data from backend:", e);
     throw new Error("Could not fetch P2P data");
   }
 }
