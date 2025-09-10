@@ -10,7 +10,31 @@
 	},
 	"devDependencies": {
 		"@cloudflare/vitest-pool-workers": "^0.8.19",
+		"nodemon": "^3.1.10",
 		"vitest": "~3.2.0",
 		"wrangler": "^4.35.0"
+	},
+	"description": "",
+	"main": "vitest.config.js",
+	"directories": {
+		"test": "test"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/YonasGr/my-telegram-bot.git"
+	},
+	"keywords": [],
+	"author": "",
+	"license": "ISC",
+	"type": "commonjs",
+	"bugs": {
+		"url": "https://github.com/YonasGr/my-telegram-bot/issues"
+	},
+	"homepage": "https://github.com/YonasGr/my-telegram-bot#readme",
+	"dependencies": {
+		"cors": "^2.8.5",
+		"express": "^5.1.0",
+		"express-rate-limit": "^8.1.0",
+		"node-fetch": "^3.3.2"
 	}
 }
