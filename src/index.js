@@ -1,15 +1,452 @@
-/**
- * Welcome to Cloudflare Workers! This is your first worker.
- *
- * - Run `npm run dev` in your terminal to start a development server
- * - Open a browser tab at http://localhost:8787/ to see your worker in action
- * - Run `npm run deploy` to publish your worker
- *
- * Learn more at https://developers.cloudflare.com/workers/
- */
+// ------------------------- Cloudflare Worker Telegram Bot (ES Modules) -------------------------
+
+const BINANCE_P2P_URL = 'https://p2p.binance.com/bapi/c2c/v2/friendly/c2c/adv/search';
+const COINGECKO_COINS_LIST_URL = 'https://api.coingecko.com/api/v3/coins/list';
+const COINGECKO_COIN_URL = 'https://api.coingecko.com/api/v3/coins/';
+const COINGECKO_PRICE_URL = 'https://api.coingecko.com/api/v3/simple/price';
+
+// ------------------------- UTILITIES -------------------------
+
+function escapeMarkdown(text) {
+  if (typeof text !== 'string') return '';
+  const escapeChars = '_*[]()~`>#+-=|{}.!';
+  return text.split('').map(c => escapeChars.includes(c) ? '\\' + c : c).join('');
+}
+
+function formatNumber(value) {
+  if (value === null || value === undefined || isNaN(value)) return 'N/A';
+  return Number(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+async function sendMessage(chatId, text, parseMode = 'Markdown', env) {
+  try {
+    const botToken = env.TELEGRAM_BOT_TOKEN;
+    
+    if (!botToken) {
+      console.error("No Telegram bot token found in environment variables");
+      throw new Error("Bot token not configured");
+    }
+    
+    const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        chat_id: chatId, 
+        text, 
+        parse_mode: parseMode 
+      })
+    });
+    
+    if (!response.ok) {
+      const errorDetails = await response.text();
+      console.error(`Telegram API error: ${response.status} ${response.statusText}`, errorDetails);
+      
+      // If it's a 400 error, it might be due to markdown formatting
+      if (response.status === 400) {
+        // Try sending without markdown
+        const plainResponse = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            chat_id: chatId, 
+            text: text.replace(/\\/g, ''), // Remove markdown escaping
+          })
+        });
+        
+        if (!plainResponse.ok) {
+          const plainError = await plainResponse.text();
+          console.error("Plain text also failed:", plainError);
+        }
+      }
+    }
+    
+    return response;
+  } catch (e) {
+    console.error("Error sending message to Telegram:", e);
+    throw e;
+  }
+}
+
+// ------------------------- CACHING & RATE LIMITING -------------------------
+
+async function getWithCache(env, key, fetchFunction, ttl = 86400) {
+  try {
+    const cached = await env.BOT_CACHE.get(key);
+    if (cached) {
+      return JSON.parse(cached);
+    }
+    
+    const data = await fetchFunction();
+    await env.BOT_CACHE.put(key, JSON.stringify(data), { expirationTtl: ttl });
+    return data;
+  } catch (e) {
+    console.error(`Cache error for key ${key}:`, e);
+    throw e;
+  }
+}
+
+async function checkRateLimit(env, identifier, limit = 5, windowSeconds = 60) {
+  try {
+    const key = `rate_limit:${identifier}`;
+    const now = Math.floor(Date.now() / 1000);
+    const windowStart = now - windowSeconds;
+    
+    const requests = await env.BOT_CACHE.get(key);
+    let requestTimestamps = requests ? JSON.parse(requests) : [];
+    
+    // Filter requests within the current time window
+    requestTimestamps = requestTimestamps.filter(timestamp => timestamp > windowStart);
+    
+    if (requestTimestamps.length >= limit) {
+      return false; // Rate limited
+    }
+    
+    // Add current request
+    requestTimestamps.push(now);
+    await env.BOT_CACHE.put(key, JSON.stringify(requestTimestamps), { expirationTtl: windowSeconds * 2 });
+    
+    return true;
+  } catch (e) {
+    console.error("Rate limit error:", e);
+    // Fail open in case of errors to avoid blocking users
+    return true;
+  }
+}
+
+// ------------------------- CoinGecko -------------------------
+
+async function getCoinList(env) {
+  try {
+    const coinList = await getWithCache(env, 'coinList', async () => {
+      const res = await fetch(COINGECKO_COINS_LIST_URL);
+      if (!res.ok) {
+        throw new Error(`CoinGecko API error: ${res.status} ${res.statusText}`);
+      }
+      const data = await res.json();
+      
+      // Create a mapping with multiple access methods
+      const mapping = {};
+      data.forEach(c => {
+        mapping[c.symbol.toLowerCase()] = c.id;
+        mapping[c.id.toLowerCase()] = c.id; // Also allow access by ID
+      });
+      
+      return mapping;
+    }, 86400); // 24 hours TTL
+    
+    return coinList;
+  } catch (e) {
+    console.error("Error getting coin list:", e);
+    throw new Error("Could not fetch coin data");
+  }
+}
+
+async function getCoinIdFromSymbol(symbol, env) {
+  if (!symbol) return null;
+  
+  const coinList = await getCoinList(env);
+  return coinList[symbol.toLowerCase()] || null;
+}
+
+// ------------------------- Binance P2P -------------------------
+
+async function getP2PData(amount = null, tradeType = 'BUY') {
+  const payload = {
+    proMerchantAds: false,
+    page: 1,
+    rows: 10,
+    payTypes: [],
+    asset: 'USDT',
+    fiat: 'ETB',
+    tradeType,
+    amount
+  };
+
+  try {
+    const res = await fetch(BINANCE_P2P_URL, {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'Accept': 'application/json',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Origin': 'https://p2p.binance.com',
+        'Referer': 'https://p2p.binance.com/',
+      },
+      body: JSON.stringify(payload)
+    });
+    
+    if (!res.ok) {
+      console.error(`Binance P2P API error: ${res.status} ${res.statusText}`);
+      // Try to get more error details
+      const errorText = await res.text();
+      console.error("Binance error details:", errorText);
+      throw new Error(`Binance P2P API error: ${res.status}`);
+    }
+    
+    const data = await res.json();
+    return data.data || [];
+  } catch (e) {
+    console.error("Error fetching Binance P2P data:", e);
+    throw new Error("Could not fetch P2P data");
+  }
+}
+
+// ------------------------- COMMAND HANDLERS -------------------------
+
+async function handleStart(chatId, env) {
+  const message = `
+👋 Hello! I am your Binance P2P ETB bot.
+
+Commands:
+/p2p - Top 10 general P2P rates for USDT in ETB
+/rate <amount> <currency> - Top P2P rates for specific amount
+/sell <amount> usdt etb - Calculate ETB for selling USDT
+/convert <amount> <from_currency> <to_currency> - Convert crypto
+/coin <coin_symbol> - Get coin info and 7D chart
+
+Information is fetched live from Binance P2P and CoinGecko.
+`;
+  await sendMessage(chatId, message, 'Markdown', env);
+}
+
+async function handleP2P(chatId, env) {
+  try {
+    const data = await getP2PData(null, 'BUY');
+    if (!data.length) {
+      return await sendMessage(chatId, "Could not fetch P2P rates right now.", 'Markdown', env);
+    }
+
+    let message = "--- Top 10 P2P Rates (Buy USDT) ---\n\n";
+    data.slice(0, 10).forEach((ad, i) => {
+      message += `${i+1}. ${escapeMarkdown(ad.advertiser.nickName)}: ${formatNumber(ad.adv.price)} ETB\n`;
+    });
+    
+    await sendMessage(chatId, message, 'Markdown', env);
+  } catch (e) {
+    console.error("P2P command error:", e);
+    await sendMessage(chatId, "⚠️ Could not fetch P2P rates. Please try again later.", 'Markdown', env);
+  }
+}
+
+async function handleRate(chatId, amount, currency, env) {
+  // Validate amount
+  if (isNaN(amount) || amount <= 0) {
+    return await sendMessage(chatId, "Please provide a valid amount (number greater than 0).", 'Markdown', env);
+  }
+  
+  // Validate currency (simplified check)
+  if (!currency || currency.length > 10) {
+    return await sendMessage(chatId, "Please provide a valid currency code.", 'Markdown', env);
+  }
+
+  try {
+    const data = await getP2PData(amount, 'BUY');
+    if (!data.length) {
+      return await sendMessage(chatId, `No P2P offers found for ${amount} ${currency}.`, 'Markdown', env);
+    }
+
+    let message = `--- Top P2P Rates for ${amount} ${currency.toUpperCase()} ---\n\n`;
+    data.slice(0, 10).forEach((ad, i) => {
+      message += `${i+1}. ${escapeMarkdown(ad.advertiser.nickName)}: ${formatNumber(ad.adv.price)} ETB\n`;
+    });
+    
+    await sendMessage(chatId, message, 'Markdown', env);
+  } catch (e) {
+    console.error("Rate command error:", e);
+    await sendMessage(chatId, "⚠️ Could not fetch rate information. Please try again later.", 'Markdown', env);
+  }
+}
+
+async function handleSell(chatId, amount, env) {
+  // Validate amount
+  if (isNaN(amount) || amount <= 0) {
+    return await sendMessage(chatId, "Please provide a valid amount (number greater than 0).", 'Markdown', env);
+  }
+
+  try {
+    const data = await getP2PData(amount, 'SELL');
+    if (!data.length || data.length < 6) {
+      return await sendMessage(chatId, "Could not fetch enough P2P offers.", 'Markdown', env);
+    }
+
+    // Get the 6th best offer (index 5) as in original code
+    const best = data[5];
+    const rate = parseFloat(best.adv.price);
+    const totalETB = amount * rate;
+    
+    const message = `
+💱 Best P2P Rate for ${amount} USDT → ETB
+
+1 USDT = ${formatNumber(rate)} ETB
+${amount} USDT = ${formatNumber(totalETB)} ETB
+
+👤 Seller: ${escapeMarkdown(best.advertiser.nickName)}
+📊 Orders: ${best.advertiser.monthOrderCount}, Completion: ${(best.advertiser.monthFinishRate*100).toFixed(2)}%
+`;
+    await sendMessage(chatId, message, 'Markdown', env);
+  } catch (e) {
+    console.error("Sell command error:", e);
+    await sendMessage(chatId, "⚠️ Could not calculate sell rate. Please try again later.", 'Markdown', env);
+  }
+}
+
+async function handleConvert(chatId, amount, fromCurrency, toCurrency, env) {
+  // Validate amount
+  if (isNaN(amount) || amount <= 0) {
+    return await sendMessage(chatId, "Please provide a valid amount (number greater than 0).", 'Markdown', env);
+  }
+  
+  // Validate currencies
+  if (!fromCurrency || !toCurrency || fromCurrency.length > 20 || toCurrency.length > 20) {
+    return await sendMessage(chatId, "Please provide valid currency codes.", 'Markdown', env);
+  }
+
+  try {
+    const fromId = await getCoinIdFromSymbol(fromCurrency, env);
+    const toId = await getCoinIdFromSymbol(toCurrency, env);
+    
+    if (!fromId || !toId) {
+      return await sendMessage(chatId, "Could not find one or both of the specified currencies.", 'Markdown', env);
+    }
+
+    const res = await fetch(`${COINGECKO_PRICE_URL}?ids=${fromId},${toId}&vs_currencies=usd`);
+    
+    if (!res.ok) {
+      throw new Error(`CoinGecko API error: ${res.status}`);
+    }
+    
+    const prices = await res.json();
+    const fromUSD = prices[fromId]?.usd;
+    const toUSD = prices[toId]?.usd;
+    
+    if (!fromUSD || !toUSD) {
+      return await sendMessage(chatId, "Price data not available for one or both currencies.", 'Markdown', env);
+    }
+
+    const result = (amount * fromUSD) / toUSD;
+    const message = `
+${amount} ${fromCurrency.toUpperCase()} ≈ ${result.toFixed(6)} ${toCurrency.toUpperCase()}
+1 ${fromCurrency.toUpperCase()} ≈ ${(fromUSD/toUSD).toFixed(6)} ${toCurrency.toUpperCase()}
+1 ${toCurrency.toUpperCase()} ≈ ${(toUSD/fromUSD).toFixed(6)} ${fromCurrency.toUpperCase()}
+`;
+    await sendMessage(chatId, message, 'Markdown', env);
+  } catch (e) {
+    console.error("Convert command error:", e);
+    await sendMessage(chatId, "⚠️ Could not perform conversion. Please try again later.", 'Markdown', env);
+  }
+}
+
+async function handleCoin(chatId, symbol, env) {
+  // Validate symbol
+  if (!symbol || symbol.length > 20) {
+    return await sendMessage(chatId, "Please provide a valid coin symbol.", 'Markdown', env);
+  }
+
+  try {
+    const coinId = await getCoinIdFromSymbol(symbol, env);
+    if (!coinId) {
+      return await sendMessage(chatId, `Could not find coin ${symbol.toUpperCase()}.`, 'Markdown', env);
+    }
+
+    const res = await fetch(`${COINGECKO_COIN_URL}${coinId}`);
+    
+    if (!res.ok) {
+      if (res.status === 404) {
+        return await sendMessage(chatId, `Could not find coin ${symbol.toUpperCase()}.`, 'Markdown', env);
+      }
+      throw new Error(`CoinGecko API error: ${res.status}`);
+    }
+    
+    const data = await res.json();
+    const marketData = data.market_data || {};
+    const currentPrice = marketData.current_price?.usd ?? 'N/A';
+    const marketCap = marketData.market_cap?.usd ?? 'N/A';
+    const change24h = marketData.price_change_percentage_24h ?? 'N/A';
+
+    const message = `
+--- ${escapeMarkdown(data.name)} (${data.symbol.toUpperCase()}) ---
+Current Price: $${formatNumber(currentPrice)}
+Market Cap: $${formatNumber(marketCap)}
+24h Change: ${formatNumber(change24h)}%
+*Data provided by CoinGecko*
+`;
+    await sendMessage(chatId, message, 'Markdown', env);
+  } catch (e) {
+    console.error("Coin command error:", e);
+    await sendMessage(chatId, "⚠️ Could not fetch coin information. Please try again later.", 'Markdown', env);
+  }
+}
+
+// ------------------------- MAIN HANDLER (ES Modules) -------------------------
 
 export default {
-	async fetch(request, env, ctx) {
-		return new Response('Hello World!');
-	},
+  async fetch(request, env, ctx) {
+    // Debug: log environment keys
+    console.log("Environment keys:", Object.keys(env));
+    
+    // Handle CORS preflight requests
+    if (request.method === 'OPTIONS') {
+      return new Response(null, {
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type',
+        }
+      });
+    }
+    
+    // Only respond to POST requests for Telegram webhooks
+    if (request.method !== 'POST') {
+      return new Response('Method not allowed', { status: 405 });
+    }
+
+    try {
+      const body = await request.json();
+      const chatId = body.message?.chat?.id;
+      const text = body.message?.text || '';
+      const userId = body.message?.from?.id;
+
+      if (!chatId || !text || !userId) {
+        return new Response('ok');
+      }
+
+      // Check rate limiting
+      const isAllowed = await checkRateLimit(env, userId, 10, 60);
+      if (!isAllowed) {
+        await sendMessage(chatId, "⚠️ Too many requests. Please wait a minute before trying again.", 'Markdown', env);
+        return new Response('ok');
+      }
+
+      const args = text.trim().split(/\s+/);
+      const cmd = args[0].toLowerCase();
+
+      // Handle commands
+      if (cmd === '/start') {
+        await handleStart(chatId, env);
+      } else if (cmd === '/p2p') {
+        await handleP2P(chatId, env);
+      } else if (cmd === '/rate' && args.length >= 3) {
+        const amount = parseFloat(args[1]);
+        await handleRate(chatId, amount, args[2], env);
+      } else if (cmd === '/sell' && args.length >= 2) {
+        const amount = parseFloat(args[1]);
+        await handleSell(chatId, amount, env);
+      } else if (cmd === '/convert' && args.length >= 4) {
+        const amount = parseFloat(args[1]);
+        await handleConvert(chatId, amount, args[2], args[3], env);
+      } else if (cmd === '/coin' && args.length >= 2) {
+        await handleCoin(chatId, args[1], env);
+      } else if (cmd === '/help') {
+        await handleStart(chatId, env);
+      } else {
+        await sendMessage(chatId, "Unknown command. Use /start to see a list of available commands.", 'Markdown', env);
+      }
+
+      return new Response('ok');
+    } catch (e) {
+      console.error("Request handling error:", e);
+      return new Response('Error processing request', { status: 500 });
+    }
+  }
 };
