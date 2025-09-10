@@ -1,28 +1,67 @@
 // server.js
 import express from "express";
 import fetch from "node-fetch";
-import cors from "cors";
-import rateLimit from "express-rate-limit";
 
 const app = express();
 
-// Middleware
-app.use(cors({
-  origin: process.env.NODE_ENV === 'production' 
+// Fix: Enable trust proxy for rate limiting
+app.set('trust proxy', 1);
+
+// Basic CORS middleware
+app.use((req, res, next) => {
+  const allowedOrigins = process.env.NODE_ENV === 'production' 
     ? ['https://yourdomain.com'] 
-    : ['http://localhost:3000', 'http://localhost:3001'],
-  credentials: true
-}));
+    : ['http://localhost:3000', 'http://localhost:3001'];
+  
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
+  res.setHeader('Access-Control-Allow-Headers', 'X-Requested-With,content-type');
+  res.setHeader('Access-Control-Allow-Credentials', true);
+  
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  
+  next();
+});
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
-  message: { error: "Too many requests, please try again later." }
+// Basic rate limiting (replaces express-rate-limit to avoid the error)
+const rateLimitMap = new Map();
+app.use((req, res, next) => {
+  const ip = req.ip || req.connection.remoteAddress;
+  const now = Date.now();
+  const windowMs = 15 * 60 * 1000; // 15 minutes
+  const maxRequests = 100;
+  
+  if (!rateLimitMap.has(ip)) {
+    rateLimitMap.set(ip, { count: 1, startTime: now });
+    return next();
+  }
+  
+  const window = rateLimitMap.get(ip);
+  
+  if (now - window.startTime > windowMs) {
+    // Reset the window
+    window.count = 1;
+    window.startTime = now;
+    return next();
+  }
+  
+  if (window.count >= maxRequests) {
+    return res.status(429).json({ 
+      error: "Too many requests, please try again later." 
+    });
+  }
+  
+  window.count++;
+  next();
 });
-app.use(limiter);
 
 // Generate realistic browser headers
 const generateHeaders = () => {
@@ -191,7 +230,7 @@ app.use('*', (req, res) => {
   res.status(404).json({ error: "Endpoint not found" });
 });
 
-const port = process.env.PORT || 3001;
+const port = process.env.PORT || 10000;
 app.listen(port, () => {
   console.log(`🚀 Proxy server running on port ${port}`);
   console.log(`📍 Health check available at http://localhost:${port}/health`);
