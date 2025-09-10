@@ -47,5 +47,5 @@ app.post("/binancep2p", async (req, res) => {
   }
 });
 
-const port = process.env.PORT || 3000;
-app.listen(port, () => console.log(`Proxy running on port ${port}`));
+const port = process.env.PORT || 3001;
+app.listen(port, 'localhost', () => console.log(`Proxy running on localhost:${port}`));
