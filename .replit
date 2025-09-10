@@ -60,3 +60,7 @@ externalPort = 3002
 [[ports]]
 localPort = 43707
 externalPort = 3000
+
+[deployment]
+deploymentTarget = "vm"
+run = ["bash", "-c", "cd backend && npm start & npx wrangler deploy"]
