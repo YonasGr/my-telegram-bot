@@ -193,16 +193,18 @@ async function getP2PData(amount = null, tradeType = 'BUY') {
 
 async function handleStart(chatId, env) {
   const message = `
-👋 Hello! I am your Binance P2P ETB bot.
+🤖 *Welcome to Binance P2P ETB Bot\\!*
 
-Commands:
-/p2p - Top 10 general P2P rates for USDT in ETB
-/rate \`amount\` \`currency\` - Top P2P rates for specific amount
-/sell \`amount\` usdt etb - Calculate ETB for selling USDT
-/convert \`amount\` \`from_currency\` \`to_currency\` - Convert crypto
-/coin \`coin_symbol\` - Get coin info and 7D chart
+🚀 *Available Commands:*
 
-Information is fetched live from Binance P2P and CoinGecko.
+💱 \`/p2p\` \\- Top 10 P2P rates with limits & trader info
+📊 \`/rate [amount] [currency]\` \\- Specific amount rates
+💰 \`/sell [amount] usdt etb\` \\- Calculate ETB for selling USDT  
+🔄 \`/convert [amount] [from] [to]\` \\- Convert cryptocurrencies
+🪙 \`/coin [symbol]\` \\- Coin info \\+ market chart
+
+📡 *Live data from Binance P2P \\& CoinGecko*
+🔒 *Secure \\& Fast \\- No registration required\\!*
 `;
   await sendMessage(chatId, message, 'Markdown', env);
 }
@@ -211,15 +213,25 @@ async function handleP2P(chatId, env) {
   try {
     const data = await getP2PData(null, 'BUY');
     if (!data.length) {
-      return await sendMessage(chatId, "Could not fetch P2P rates right now.", 'Markdown', env);
+      return await sendMessage(chatId, "❌ Could not fetch P2P rates right now.", 'Markdown', env);
     }
 
-    let message = "--- Top 10 P2P Rates (Buy USDT) ---\n\n";
+    let message = "💱 *Top 10 P2P Rates \\(Buy USDT\\)*\n\n";
+    
     data.slice(0, 10).forEach((ad, i) => {
-      message += `${i+1}. ${escapeMarkdown(ad.advertiser.nickName)}: ${formatNumber(ad.adv.price)} ETB\n`;
+      const trader = ad.advertiser;
+      const adv = ad.adv;
+      const payMethods = adv.tradeMethods?.map(m => m.tradeMethodShortName || m.tradeMethodName).join(", ") || "Bank";
+      
+      message += `*${i+1}\\. ${escapeMarkdown(trader.nickName)}*\n`;
+      message += `💰 Rate: *${formatNumber(adv.price)} ETB/USDT*\n`;
+      message += `📊 Limits: ${formatNumber(adv.minSingleTransAmount)} \\- ${formatNumber(adv.maxSingleTransAmount)} ETB\n`;
+      message += `⏱️ Payment: ${adv.payTimeLimit} min \\| 💳 ${escapeMarkdown(payMethods)}\n`;
+      message += `✅ Orders: ${trader.monthOrderCount} \\| Success: ${(trader.monthFinishRate * 100).toFixed(1)}%\n\n`;
     });
     
-    await sendMessage(chatId, message, 'Markdown', env);
+    message += "🔄 *Live data from Binance P2P*";
+    await sendMessage(chatId, message, 'MarkdownV2', env);
   } catch (e) {
     console.error("P2P command error:", e);
     await sendMessage(chatId, "⚠️ Could not fetch P2P rates. Please try again later.", 'Markdown', env);
@@ -229,42 +241,48 @@ async function handleP2P(chatId, env) {
 async function handleRate(chatId, amount, currency, env) {
   // Validate amount
   if (isNaN(amount) || amount <= 0) {
-    return await sendMessage(chatId, "Please provide a valid amount (number greater than 0).", 'Markdown', env);
+    return await sendMessage(chatId, "❌ Please provide a valid amount \\(number greater than 0\\)\\.", 'MarkdownV2', env);
   }
   
   // Validate currency (simplified check)
   if (!currency || currency.length > 10) {
-    return await sendMessage(chatId, "Please provide a valid currency code.", 'Markdown', env);
+    return await sendMessage(chatId, "❌ Please provide a valid currency code\\.", 'MarkdownV2', env);
   }
 
   try {
     const data = await getP2PData(amount, 'BUY');
     if (!data.length) {
-      return await sendMessage(chatId, `No P2P offers found for ${amount} ${currency}.`, 'Markdown', env);
+      return await sendMessage(chatId, `❌ No P2P offers found for ${amount} ${currency.toUpperCase()}\\.`, 'MarkdownV2', env);
     }
 
-    let message = `--- Top P2P Rates for ${amount} ${currency.toUpperCase()} ---\n\n`;
-    data.slice(0, 10).forEach((ad, i) => {
-      message += `${i+1}. ${escapeMarkdown(ad.advertiser.nickName)}: ${formatNumber(ad.adv.price)} ETB\n`;
+    let message = `💱 *Top P2P Rates for ${amount} ${currency.toUpperCase()}*\n\n`;
+    data.slice(0, 5).forEach((ad, i) => {
+      const trader = ad.advertiser;
+      const adv = ad.adv;
+      
+      message += `*${i+1}\\. ${escapeMarkdown(trader.nickName)}*\n`;
+      message += `💰 *${formatNumber(adv.price)} ETB/USDT*\n`;
+      message += `📊 Min: ${formatNumber(adv.minSingleTransAmount)} ETB\n\n`;
     });
     
-    await sendMessage(chatId, message, 'Markdown', env);
+    message += "🔄 *Live data from Binance P2P*";
+    await sendMessage(chatId, message, 'MarkdownV2', env);
   } catch (e) {
     console.error("Rate command error:", e);
-    await sendMessage(chatId, "⚠️ Could not fetch rate information. Please try again later.", 'Markdown', env);
+    await sendMessage(chatId, "⚠️ Could not fetch rate information\\. Please try again later\\.", 'MarkdownV2', env);
   }
 }
 
 async function handleSell(chatId, amount, env) {
   // Validate amount
   if (isNaN(amount) || amount <= 0) {
-    return await sendMessage(chatId, "Please provide a valid amount (number greater than 0).", 'Markdown', env);
+    return await sendMessage(chatId, "❌ Please provide a valid amount \\(number greater than 0\\)\\.", 'MarkdownV2', env);
   }
 
   try {
     const data = await getP2PData(amount, 'SELL');
     if (!data.length || data.length < 6) {
-      return await sendMessage(chatId, "Could not fetch enough P2P offers.", 'Markdown', env);
+      return await sendMessage(chatId, "❌ Could not fetch enough P2P offers\\.", 'MarkdownV2', env);
     }
 
     // Get the 6th best offer (index 5) as in original code
@@ -273,30 +291,35 @@ async function handleSell(chatId, amount, env) {
     const totalETB = amount * rate;
     
     const message = `
-💱 Best P2P Rate for ${amount} USDT → ETB
+💰 *USDT → ETB Conversion*
 
-1 USDT = ${formatNumber(rate)} ETB
-${amount} USDT = ${formatNumber(totalETB)} ETB
+📊 *Rate Analysis:*
+• 1 USDT = *${formatNumber(rate)} ETB*
+• ${amount} USDT = *${formatNumber(totalETB)} ETB*
 
-👤 Seller: ${escapeMarkdown(best.advertiser.nickName)}
-📊 Orders: ${best.advertiser.monthOrderCount}, Completion: ${(best.advertiser.monthFinishRate*100).toFixed(2)}%
+👤 *Recommended Seller:*
+• Name: ${escapeMarkdown(best.advertiser.nickName)}
+• Orders: ${best.advertiser.monthOrderCount}
+• Success Rate: ${(best.advertiser.monthFinishRate*100).toFixed(1)}%
+
+🔄 *Live P2P Rate*
 `;
-    await sendMessage(chatId, message, 'Markdown', env);
+    await sendMessage(chatId, message, 'MarkdownV2', env);
   } catch (e) {
     console.error("Sell command error:", e);
-    await sendMessage(chatId, "⚠️ Could not calculate sell rate. Please try again later.", 'Markdown', env);
+    await sendMessage(chatId, "⚠️ Could not calculate sell rate\\. Please try again later\\.", 'MarkdownV2', env);
   }
 }
 
 async function handleConvert(chatId, amount, fromCurrency, toCurrency, env) {
   // Validate amount
   if (isNaN(amount) || amount <= 0) {
-    return await sendMessage(chatId, "Please provide a valid amount (number greater than 0).", 'Markdown', env);
+    return await sendMessage(chatId, "❌ Please provide a valid amount \\(number greater than 0\\)\\.", 'MarkdownV2', env);
   }
   
   // Validate currencies
   if (!fromCurrency || !toCurrency || fromCurrency.length > 20 || toCurrency.length > 20) {
-    return await sendMessage(chatId, "Please provide valid currency codes.", 'Markdown', env);
+    return await sendMessage(chatId, "❌ Please provide valid currency codes\\.", 'MarkdownV2', env);
   }
 
   try {
@@ -304,7 +327,7 @@ async function handleConvert(chatId, amount, fromCurrency, toCurrency, env) {
     const toId = await getCoinIdFromSymbol(toCurrency, env);
     
     if (!fromId || !toId) {
-      return await sendMessage(chatId, "Could not find one or both of the specified currencies.", 'Markdown', env);
+      return await sendMessage(chatId, "❌ Could not find one or both of the specified currencies\\.", 'MarkdownV2', env);
     }
 
     const res = await fetch(`${COINGECKO_PRICE_URL}?ids=${fromId},${toId}&vs_currencies=usd`);
@@ -318,39 +341,49 @@ async function handleConvert(chatId, amount, fromCurrency, toCurrency, env) {
     const toUSD = prices[toId]?.usd;
     
     if (!fromUSD || !toUSD) {
-      return await sendMessage(chatId, "Price data not available for one or both currencies.", 'Markdown', env);
+      return await sendMessage(chatId, "❌ Price data not available for one or both currencies\\.", 'MarkdownV2', env);
     }
 
     const result = (amount * fromUSD) / toUSD;
     const message = `
-${amount} ${fromCurrency.toUpperCase()} ≈ ${result.toFixed(6)} ${toCurrency.toUpperCase()}
-1 ${fromCurrency.toUpperCase()} ≈ ${(fromUSD/toUSD).toFixed(6)} ${toCurrency.toUpperCase()}
-1 ${toCurrency.toUpperCase()} ≈ ${(toUSD/fromUSD).toFixed(6)} ${fromCurrency.toUpperCase()}
+🔄 *Crypto Conversion*
+
+💱 *${amount} ${fromCurrency.toUpperCase()} ≈ ${result.toFixed(6)} ${toCurrency.toUpperCase()}*
+
+📊 *Exchange Rates:*
+• 1 ${fromCurrency.toUpperCase()} = ${(fromUSD/toUSD).toFixed(6)} ${toCurrency.toUpperCase()}
+• 1 ${toCurrency.toUpperCase()} = ${(toUSD/fromUSD).toFixed(6)} ${fromCurrency.toUpperCase()}
+
+💰 *USD Values:*
+• ${fromCurrency.toUpperCase()}: $${formatNumber(fromUSD)}
+• ${toCurrency.toUpperCase()}: $${formatNumber(toUSD)}
+
+🔄 *Live prices from CoinGecko*
 `;
-    await sendMessage(chatId, message, 'Markdown', env);
+    await sendMessage(chatId, message, 'MarkdownV2', env);
   } catch (e) {
     console.error("Convert command error:", e);
-    await sendMessage(chatId, "⚠️ Could not perform conversion. Please try again later.", 'Markdown', env);
+    await sendMessage(chatId, "⚠️ Could not perform conversion\\. Please try again later\\.", 'MarkdownV2', env);
   }
 }
 
 async function handleCoin(chatId, symbol, env) {
   // Validate symbol
   if (!symbol || symbol.length > 20) {
-    return await sendMessage(chatId, "Please provide a valid coin symbol.", 'Markdown', env);
+    return await sendMessage(chatId, "❌ Please provide a valid coin symbol.", 'Markdown', env);
   }
 
   try {
     const coinId = await getCoinIdFromSymbol(symbol, env);
     if (!coinId) {
-      return await sendMessage(chatId, `Could not find coin ${symbol.toUpperCase()}.`, 'Markdown', env);
+      return await sendMessage(chatId, `❌ Could not find coin ${symbol.toUpperCase()}.`, 'Markdown', env);
     }
 
     const res = await fetch(`${COINGECKO_COIN_URL}${coinId}`);
     
     if (!res.ok) {
       if (res.status === 404) {
-        return await sendMessage(chatId, `Could not find coin ${symbol.toUpperCase()}.`, 'Markdown', env);
+        return await sendMessage(chatId, `❌ Could not find coin ${symbol.toUpperCase()}.`, 'Markdown', env);
       }
       throw new Error(`CoinGecko API error: ${res.status}`);
     }
@@ -360,15 +393,33 @@ async function handleCoin(chatId, symbol, env) {
     const currentPrice = marketData.current_price?.usd ?? 'N/A';
     const marketCap = marketData.market_cap?.usd ?? 'N/A';
     const change24h = marketData.price_change_percentage_24h ?? 'N/A';
+    const change7d = marketData.price_change_percentage_7d ?? 'N/A';
+    const volume24h = marketData.total_volume?.usd ?? 'N/A';
+    const rank = data.market_cap_rank ?? 'N/A';
 
+    // For now, we'll indicate that chart generation is available
+    // In future implementations, chart images can be generated and sent
+    const hasChartData = currentPrice !== 'N/A' && change24h !== 'N/A';
+
+    const changeEmoji = change24h > 0 ? '📈' : change24h < 0 ? '📉' : '➡️';
+    const changeColor = change24h > 0 ? '🟢' : change24h < 0 ? '🔴' : '🟡';
+    
     const message = `
---- ${escapeMarkdown(data.name)} (${data.symbol.toUpperCase()}) ---
-Current Price: $${formatNumber(currentPrice)}
-Market Cap: $${formatNumber(marketCap)}
-24h Change: ${formatNumber(change24h)}%
-*Data provided by CoinGecko*
+🪙 *${escapeMarkdown(data.name)} \\(${symbol.toUpperCase()}\\)*
+
+💰 *Price:* $${formatNumber(currentPrice)}
+${changeEmoji} *24h Change:* ${changeColor} ${formatNumber(change24h)}%
+📊 *7d Change:* ${formatNumber(change7d)}%
+🏆 *Rank:* #${rank}
+
+📈 *Market Stats:*
+• Market Cap: $${formatNumber(marketCap)}
+• 24h Volume: $${formatNumber(volume24h)}
+
+${hasChartData ? '📊 *Market data available*' : ''}
+🔄 *Data from CoinGecko*
 `;
-    await sendMessage(chatId, message, 'Markdown', env);
+    await sendMessage(chatId, message, 'MarkdownV2', env);
   } catch (e) {
     console.error("Coin command error:", e);
     await sendMessage(chatId, "⚠️ Could not fetch coin information. Please try again later.", 'Markdown', env);
