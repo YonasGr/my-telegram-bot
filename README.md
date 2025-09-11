@@ -121,7 +121,7 @@ Set these in your Cloudflare Worker environment:
 • Circulating Supply: 19M BTC
 ```
 
-![Sample Chart](https://quickchart.io/chart/render/zf-123abc)
+![Sample Chart](src/image.png)
 
 ---
 
