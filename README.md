@@ -1,46 +1,148 @@
-# Telegram Bot for Binance P2P ETB
+```markdown
+# 🚀 Cloudflare Worker Telegram Bot
 
-## Overview
-This is a Telegram bot that provides Binance P2P Ethiopian Birr (ETB) exchange rates and cryptocurrency conversion functionality. The bot uses a Cloudflare Worker to handle Telegram webhooks and an Express.js backend to proxy Binance P2P API calls.
+[![Telegram](https://img.shields.io/badge/Telegram-Bot-blue?logo=telegram)](https://t.me/x_Jonah)  
+[![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers-F38020?logo=cloudflare&logoColor=white)](https://workers.cloudflare.com/)  
+[![Node.js](https://img.shields.io/badge/Node.js-18.x-green?logo=node.js&logoColor=white)](https://nodejs.org/)  
+[![CoinGecko](https://img.shields.io/badge/API-CoinGecko-7289DA?logo=coingecko)](https://www.coingecko.com/)  
+[![Binance](https://img.shields.io/badge/API-Binance-FCD535?logo=binance&logoColor=black)](https://binance.com)  
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-## Project Architecture
-- **Frontend**: Cloudflare Worker (src/index.js) - Handles Telegram bot commands and webhook processing
-- **Backend**: Express.js server (backend/server.js) - Proxies Binance P2P API calls to avoid CORS issues
-- **Development Environment**: Configured for Replit with proper port and host settings
+A **serverless Telegram bot** built with **Cloudflare Workers** that provides real-time cryptocurrency data, Binance P2P trading rates, and CoinGecko market insights — all directly inside Telegram.
 
-## Setup in Replit
-- **Frontend**: Runs on port 5000 via Wrangler dev server
-- **Backend**: Runs on port 3001 for API proxy functionality
-- **Dependencies**: All npm packages installed for both root and backend directories
-- **Deployment**: Configured for VM deployment with both services
+---
 
-## Recent Changes
-- 2025-09-10: Initial setup and configuration for Replit environment
-- Configured backend to use correct port binding for Replit
-- Updated Cloudflare Worker to use local backend instead of external proxy
-- Set up workflows for both frontend and backend services
-- Configured deployment settings for production
-- Enhanced P2P command with rate limits, payment methods, and trader success rates
-- Improved message formatting with emojis and MarkdownV2 support
-- Added comprehensive market data to coin command
-- Polished all commands with better user experience
+## ✨ Features
 
-## Enhanced Bot Commands
-- `/start` - Welcome message with emoji-enhanced command overview
-- `/p2p` - Enhanced P2P rates with limits, payment methods, trader stats
-- `/rate <amount> <currency>` - Specific amount rates with detailed trader info
-- `/sell <amount> usdt etb` - ETB conversion with recommended seller details
-- `/convert <amount> <from_currency> <to_currency>` - Crypto conversion with USD values
-- `/coin <coin_symbol>` - Comprehensive coin data with market stats and change indicators
+- 📊 **Real-time Binance P2P Data**  
+  Get live buy/sell offers for popular crypto assets like **USDT, BTC, ETH, BNB** in multiple fiat currencies (ETB, USD, EUR, GBP, NGN, KES, GHS).
 
-## Features Added
-- Rate limit information (min/max transaction amounts, payment time limits)
-- Trader success rates and monthly order counts
-- Payment method display (TeleBirr, Bank transfers, etc.)
-- Market data with price changes, volume, and market cap
-- Emoji indicators for price movements and status
-- Professional message formatting with MarkdownV2 support
+- 💱 **Currency Conversion**  
+  Convert between crypto ↔ crypto or crypto ↔ fiat with live market data.
 
-## Environment Variables Required
-- `TELEGRAM_BOT_TOKEN` - Token for the Telegram bot API
-- `BOT_CACHE` - KV namespace binding for caching (configured in wrangler.toml)
+- 🪙 **Coin Information**  
+  Fetch detailed coin data (price, volume, market cap, supply) with **auto-generated price charts**.
+
+- 💰 **Sell Estimator**  
+  Quickly calculate how much ETB you’ll get when selling crypto.
+
+- ⚡ **Rate Limiting & Caching**  
+  Prevents abuse and improves performance with smart caching.
+
+- 🖼 **Charts & Images**  
+  Generates clean, responsive price charts using [QuickChart.io](https://quickchart.io/).
+
+---
+
+## 🛠️ Commands
+
+| Command | Description | Example |
+|---------|-------------|---------|
+| `/start` or `/help` | Show welcome message and list of commands | `/start` |
+| `/p2p [asset] [fiat] [type]` | Get Binance P2P rates | `/p2p USDT ETB BUY` |
+| `/rate [amount] [currency] [vsCurrency]` | Convert with live rates | `/rate 100 BTC USD` |
+| `/sell [amount]` | Estimate ETB for selling crypto | `/sell 50` |
+| `/convert [amount] [from] [to]` | Convert between any currencies | `/convert 100 ETH ADA` |
+| `/coin [symbol]` | Get detailed market info with chart | `/coin bitcoin` |
+
+---
+
+## 📂 Project Structure
+
+```
+
+├── src/
+│   ├── utils/              # Utility functions (formatting, escaping, etc.)
+│   ├── cache/              # Caching & rate-limiting helpers
+│   ├── api/                # API wrappers (Binance, CoinGecko, QuickChart)
+│   ├── commands/           # Telegram command handlers
+│   └── worker.js           # Main Cloudflare Worker entry
+├── wrangler.toml           # Cloudflare config
+├── package.json
+└── README.md
+
+````
+
+---
+
+## ⚙️ Environment Variables
+
+Set these in your Cloudflare Worker environment:
+
+| Variable | Description |
+|----------|-------------|
+| `TELEGRAM_BOT_TOKEN` | Your Telegram bot token from [BotFather](https://t.me/BotFather) |
+| `BOT_CACHE` | Cloudflare KV namespace binding for caching API responses |
+
+---
+
+## 🚀 Deployment
+
+1. **Clone the repo**
+   ```bash
+   git clone https://github.com/your-username/crypto-telegram-bot.git
+   cd crypto-telegram-bot
+````
+
+2. **Install dependencies**
+
+   ```bash
+   npm install
+   ```
+
+3. **Configure Wrangler**
+
+   ```bash
+   wrangler login
+   wrangler kv:namespace create BOT_CACHE
+   ```
+
+4. **Deploy**
+
+   ```bash
+   wrangler deploy
+   ```
+
+5. **Set Telegram Webhook**
+
+   ```bash
+   curl -X POST "https://api.telegram.org/bot<YOUR_BOT_TOKEN>/setWebhook" \
+        -d "url=https://<your-worker-subdomain>.workers.dev"
+   ```
+
+---
+
+## 📸 Example
+
+**Coin Command Response**
+
+```
+🪙 Bitcoin (BTC)
+
+💰 Price: $42,000.00
+📈 24h Change: 🟢 +3.2%
+🏆 Market Cap Rank: #1
+📊 Market Stats:
+• Market Cap: $820B
+• 24h Volume: $25B
+• Circulating Supply: 19M BTC
+```
+
+![Sample Chart](https://quickchart.io/chart/render/zf-123abc)
+
+---
+
+## 📌 Notes
+
+* Binance P2P requests are proxied through a backend to bypass Cloudflare Worker restrictions.
+* CoinGecko API has strict **rate limits** → caching is implemented to prevent errors.
+* Charts are generated dynamically via **QuickChart.io**.
+
+---
+
+## 👨‍💻 Author
+
+Built by [@x\_Jonah](https://t.me/x_Jonah)
+📢 Updates: [@Jonah\_Notice](https://t.me/Jonah_Notice)
+
+---
