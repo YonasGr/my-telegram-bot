@@ -1,4 +1,3 @@
-```markdown
 # 🚀 Cloudflare Worker Telegram Bot
 
 [![Telegram](https://img.shields.io/badge/Telegram-Bot-blue?logo=telegram)](https://t.me/x_Jonah)  
@@ -10,7 +9,6 @@
 
 A **serverless Telegram bot** built with **Cloudflare Workers** that provides real-time cryptocurrency data, Binance P2P trading rates, and CoinGecko market insights — all directly inside Telegram.
 
----
 
 ## ✨ Features
 
