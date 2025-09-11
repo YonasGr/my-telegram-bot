@@ -1,11 +1,6 @@
 # 🚀 Cloudflare Worker Telegram Bot
 
-[![Telegram](https://img.shields.io/badge/Telegram-Bot-blue?logo=telegram)](https://t.me/x_Jonah)  
-[![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers-F38020?logo=cloudflare&logoColor=white)](https://workers.cloudflare.com/)  
-[![Node.js](https://img.shields.io/badge/Node.js-18.x-green?logo=node.js&logoColor=white)](https://nodejs.org/)  
-[![CoinGecko](https://img.shields.io/badge/API-CoinGecko-7289DA?logo=coingecko)](https://www.coingecko.com/)  
-[![Binance](https://img.shields.io/badge/API-Binance-FCD535?logo=binance&logoColor=black)](https://binance.com)  
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Telegram](https://img.shields.io/badge/Telegram-Bot-blue?logo=telegram)](https://t.me/x_Jonah)  [![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers-F38020?logo=cloudflare&logoColor=white)](https://workers.cloudflare.com/)  [![Node.js](https://img.shields.io/badge/Node.js-18.x-green?logo=node.js&logoColor=white)](https://nodejs.org/)  [![CoinGecko](https://img.shields.io/badge/API-CoinGecko-7289DA?logo=coingecko)](https://www.coingecko.com/)  [![Binance](https://img.shields.io/badge/API-Binance-FCD535?logo=binance&logoColor=black)](https://binance.com)  [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 A **serverless Telegram bot** built with **Cloudflare Workers** that provides real-time cryptocurrency data, Binance P2P trading rates, and CoinGecko market insights — all directly inside Telegram.
 
@@ -74,13 +69,14 @@ Set these in your Cloudflare Worker environment:
 
 ---
 
+````
+
 ## 🚀 Deployment
 
 1. **Clone the repo**
    ```bash
    git clone https://github.com/your-username/crypto-telegram-bot.git
    cd crypto-telegram-bot
-````
 
 2. **Install dependencies**
 
@@ -107,8 +103,7 @@ Set these in your Cloudflare Worker environment:
    curl -X POST "https://api.telegram.org/bot<YOUR_BOT_TOKEN>/setWebhook" \
         -d "url=https://<your-worker-subdomain>.workers.dev"
    ```
-
----
+````
 
 ## 📸 Example
 
