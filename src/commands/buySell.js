@@ -5,7 +5,7 @@
 import { sendMessage, sendLoadingMessage, updateLoadingMessage } from '../api/telegram.js';
 import { getP2PDataWithCache, getBestP2PRate } from '../api/binanceP2P.js';
 import { validateAmount, validateP2PRate } from '../utils/validators.js';
-import { formatNumber } from '../utils/formatters.js';
+import { safeFormatNumber, bold, escapeMarkdownV2 } from '../utils/formatters.js';
 import { EMOJIS } from '../config/constants.js';
 
 /**
@@ -24,17 +24,17 @@ export async function handleBuy(env, chatId, args) {
 
     // Validate arguments
     if (!amount) {
-      const helpMessage = `${EMOJIS.ERROR} *Buy Command Help*
+      const helpMessage = `${EMOJIS.ERROR} ${bold('Buy Command Help')}
 
-*${EMOJIS.MONEY} Format:*
+${bold(`${EMOJIS.MONEY} Format:`)}
 \`/buy [amount] [asset] [fiat]\`
 
-*📝 Examples:*
+${bold('📝 Examples:')}
 • \`/buy 100 USDT ETB\` \\- Buy 100 USDT with ETB
 • \`/buy 0.01 BTC USD\` \\- Buy 0\\.01 BTC with USD
 • \`/buy 500 USDT\` \\- Buy 500 USDT with ETB \\(default\\)
 
-*💡 Notes:*
+${bold('💡 Notes:')}
 • Amount is required
 • Default asset: USDT
 • Default fiat: ETB
@@ -46,7 +46,7 @@ export async function handleBuy(env, chatId, args) {
 
     const amountValidation = validateAmount(amount);
     if (!amountValidation.isValid) {
-      await sendMessage(env, chatId, `${EMOJIS.ERROR} ${amountValidation.error}`, 'MarkdownV2');
+      await sendMessage(env, chatId, `${EMOJIS.ERROR} ${escapeMarkdownV2(amountValidation.error)}`, 'MarkdownV2');
       return;
     }
 
@@ -156,7 +156,7 @@ ${apiError.message}
 
   } catch (error) {
     console.error("Buy command error:", error);
-    await sendMessage(env, chatId, `${EMOJIS.ERROR} Error processing buy request: ${error.message}`, 'MarkdownV2');
+    await sendMessage(env, chatId, `${EMOJIS.ERROR} Error processing buy request: ${escapeMarkdownV2(error.message)}`, 'MarkdownV2');
   }
 }
 
@@ -198,7 +198,7 @@ export async function handleSell(env, chatId, args) {
 
     const amountValidation = validateAmount(amount);
     if (!amountValidation.isValid) {
-      await sendMessage(env, chatId, `${EMOJIS.ERROR} ${amountValidation.error}`, 'MarkdownV2');
+      await sendMessage(env, chatId, `${EMOJIS.ERROR} ${escapeMarkdownV2(amountValidation.error)}`, 'MarkdownV2');
       return;
     }
 
@@ -308,6 +308,6 @@ ${apiError.message}
 
   } catch (error) {
     console.error("Sell command error:", error);
-    await sendMessage(env, chatId, `${EMOJIS.ERROR} Error processing sell request: ${error.message}`, 'MarkdownV2');
+    await sendMessage(env, chatId, `${EMOJIS.ERROR} Error processing sell request: ${escapeMarkdownV2(error.message)}`, 'MarkdownV2');
   }
 }

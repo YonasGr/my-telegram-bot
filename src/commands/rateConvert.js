@@ -6,7 +6,7 @@ import { sendMessage, sendLoadingMessage, updateLoadingMessage } from '../api/te
 import { searchCoinSymbol, getMultipleCoinPrices } from '../api/coinGecko.js';
 import { getBestP2PRate } from '../api/binanceP2P.js';
 import { validateAmount, validateCurrency, validateConversion } from '../utils/validators.js';
-import { formatNumber } from '../utils/formatters.js';
+import { safeFormatNumber, bold, escapeMarkdownV2 } from '../utils/formatters.js';
 import { EMOJIS, SUPPORTED_FIATS } from '../config/constants.js';
 
 /**
@@ -24,18 +24,18 @@ export async function handleRate(env, chatId, args) {
 
     // Validate arguments
     if (!amount) {
-      const helpMessage = `${EMOJIS.ERROR} *Rate Command Help*
+      const helpMessage = `${EMOJIS.ERROR} ${bold('Rate Command Help')}
 
-*${EMOJIS.EXCHANGE} Format:*
-\`/rate [amount] [currency] [vs\\_currency]\`
+${bold(`${EMOJIS.EXCHANGE} Format:`)}
+\`/rate [amount] [currency] [vs_currency]\`
 
-*📝 Examples:*
+${bold('📝 Examples:')}
 • \`/rate 100 BTC USD\` \\- Convert 100 BTC to USD
 • \`/rate 1000 USDT ETB\` \\- USDT to ETB \\(uses P2P rates\\)
 • \`/rate 50 ETH EUR\` \\- Convert 50 ETH to EUR
 • \`/rate 1 BTC\` \\- Default to USD
 
-*💡 Notes:*
+${bold('💡 Notes:')}
 • ETB rates use live P2P data
 • Other conversions use CoinGecko rates
 • Default target currency is USD`;
@@ -46,7 +46,7 @@ export async function handleRate(env, chatId, args) {
 
     const amountValidation = validateAmount(amount);
     if (!amountValidation.isValid) {
-      await sendMessage(env, chatId, `${EMOJIS.ERROR} ${amountValidation.error}`, 'MarkdownV2');
+      await sendMessage(env, chatId, `${EMOJIS.ERROR} ${escapeMarkdownV2(amountValidation.error)}`, 'MarkdownV2');
       return;
     }
 
@@ -95,7 +95,7 @@ ${apiError.message}
 
   } catch (error) {
     console.error("Rate command error:", error);
-    await sendMessage(env, chatId, `${EMOJIS.ERROR} Error processing rate request: ${error.message}`, 'MarkdownV2');
+    await sendMessage(env, chatId, `${EMOJIS.ERROR} Error processing request: ${escapeMarkdownV2(error.message)}`, 'MarkdownV2');
   }
 }
 
@@ -292,7 +292,7 @@ ${apiError.message}
 
   } catch (error) {
     console.error("Convert command error:", error);
-    await sendMessage(env, chatId, `${EMOJIS.ERROR} Error processing convert request: ${error.message}`, 'MarkdownV2');
+    await sendMessage(env, chatId, `${EMOJIS.ERROR} Error processing request: ${escapeMarkdownV2(error.message)}`, 'MarkdownV2');
   }
 }
 

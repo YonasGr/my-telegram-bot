@@ -6,7 +6,13 @@ import { sendMessage, sendPhoto, sendLoadingMessage, updateLoadingMessage, creat
 import { searchCoinSymbol, getCoinData, getCoinMarketChart } from '../api/coinGecko.js';
 import { generateChartImageUrl } from '../api/charts.js';
 import { validateCoinSymbol } from '../utils/validators.js';
-import { formatNumber, formatLargeNumber, formatPercentageChange } from '../utils/formatters.js';
+import { 
+  safeFormatNumber, 
+  safeFormatLargeNumber, 
+  safeFormatPercentageChange,
+  escapeMarkdownV2,
+  bold 
+} from '../utils/formatters.js';
 import { EMOJIS, CHART_CONFIG } from '../config/constants.js';
 
 /**
@@ -54,11 +60,11 @@ ${validation.error}`;
       // Search for the coin
       const coinData = await searchCoinSymbol(env, validation.value);
       if (!coinData) {
-        const notFoundMessage = `${EMOJIS.ERROR} *Coin not found*
+        const notFoundMessage = `${EMOJIS.ERROR} ${bold('Coin not found')}
 
-Could not find cryptocurrency: *${validation.value}*
+Could not find cryptocurrency: ${bold(escapeMarkdownV2(validation.value))}
 
-*${EMOJIS.CHART} Suggestions:*
+${bold(`${EMOJIS.CHART} Suggestions:`)}
 • Try the full name: \`bitcoin\`, \`ethereum\`
 • Use common symbols: \`btc\`, \`eth\`, \`ada\`
 • Check spelling and try again
@@ -100,44 +106,48 @@ Could not find cryptocurrency: *${validation.value}*
       );
 
       // Create comprehensive coin information message
-      let coinMessage = `${EMOJIS.COIN} *${detailedData.name} \\(${coinData.symbol.toUpperCase()}\\)*
+      let coinMessage = `${EMOJIS.COIN} ${bold(`${detailedData.name} (${coinData.symbol.toUpperCase()})`)}
 
-*💰 Price Information:*
-• *Current Price:* $${formatNumber(currentPrice, currentPrice > 1 ? 2 : 6)}
-• *24h Change:* ${formatPercentageChange(priceChange24h)}
-${marketCapRank ? `• *Market Cap Rank:* #${marketCapRank}` : ''}
+${bold('💰 Price Information:')}
+• ${bold('Current Price:')} $${safeFormatNumber(currentPrice, currentPrice > 1 ? 2 : 6)}
+• ${bold('24h Change:')} ${safeFormatPercentageChange(priceChange24h)}
+${marketCapRank ? `• ${bold('Market Cap Rank:')} #${escapeMarkdownV2(marketCapRank.toString())}` : ''}
 
-*📊 Market Statistics:*
-• *Market Cap:* $${formatLargeNumber(marketCap)}
-• *24h Volume:* $${formatLargeNumber(volume24h)}
-${circulatingSupply ? `• *Circulating Supply:* ${formatLargeNumber(circulatingSupply)} ${coinData.symbol.toUpperCase()}` : ''}
+${bold('📊 Market Statistics:')}
+• ${bold('Market Cap:')} $${safeFormatLargeNumber(marketCap)}
+• ${bold('24h Volume:')} $${safeFormatLargeNumber(volume24h)}
+${circulatingSupply ? `• ${bold('Circulating Supply:')} ${safeFormatLargeNumber(circulatingSupply)} ${escapeMarkdownV2(coinData.symbol.toUpperCase())}` : ''}
 
-*📈 Additional Data:*`;
+${bold('📈 Additional Data:')}`;
 
       // Add additional price data if available
       if (marketData.high_24h && marketData.low_24h) {
-        coinMessage += `\n• *24h High:* $${formatNumber(marketData.high_24h.usd, currentPrice > 1 ? 2 : 6)}`;
-        coinMessage += `\n• *24h Low:* $${formatNumber(marketData.low_24h.usd, currentPrice > 1 ? 2 : 6)}`;
+        coinMessage += `\n• ${bold('24h High:')} $${safeFormatNumber(marketData.high_24h.usd, currentPrice > 1 ? 2 : 6)}`;
+        coinMessage += `\n• ${bold('24h Low:')} $${safeFormatNumber(marketData.low_24h.usd, currentPrice > 1 ? 2 : 6)}`;
       }
 
       if (marketData.price_change_percentage_7d) {
-        coinMessage += `\n• *7d Change:* ${formatPercentageChange(marketData.price_change_percentage_7d)}`;
+        coinMessage += `\n• ${bold('7d Change:')} ${safeFormatPercentageChange(marketData.price_change_percentage_7d)}`;
       }
 
       if (marketData.price_change_percentage_30d) {
-        coinMessage += `\n• *30d Change:* ${formatPercentageChange(marketData.price_change_percentage_30d)}`;
+        coinMessage += `\n• ${bold('30d Change:')} ${safeFormatPercentageChange(marketData.price_change_percentage_30d)}`;
       }
 
       // Add links section
+      const websiteLink = detailedData.links?.homepage?.[0] 
+        ? ` • [Website](${detailedData.links.homepage[0]})` 
+        : '';
+      
       const finalMessage = `${coinMessage}
 
-*${EMOJIS.LINK} Links:*
-• [CoinGecko](https://www.coingecko.com/en/coins/${coinData.id})${detailedData.links?.homepage?.[0] ? ` • [Website](${detailedData.links.homepage[0]})` : ''}
+${bold(`${EMOJIS.LINK} Links:`)}
+• [CoinGecko](https://www.coingecko.com/en/coins/${coinData.id})${websiteLink}
 
-*${EMOJIS.CHART} Interactive Chart \\(${CHART_CONFIG.DEFAULT_DAYS} days\\)*
-${EMOJIS.REFRESH} *Use buttons below to change timeframe*
+${bold(`${EMOJIS.CHART} Interactive Chart (${CHART_CONFIG.DEFAULT_DAYS} days)`)}
+${EMOJIS.REFRESH} ${bold('Use buttons below to change timeframe')}
 
-${EMOJIS.REFRESH} *Live data from CoinGecko*`;
+${EMOJIS.REFRESH} ${bold('Live data from CoinGecko')}`;
 
       // Create timeframe selection keyboard
       const keyboard = createTimeframeKeyboard('coin', coinData.id);
@@ -157,19 +167,19 @@ ${EMOJIS.REFRESH} *Live data from CoinGecko*`;
     } catch (apiError) {
       console.error("Coin API error:", apiError);
       
-      let errorMessage = `${EMOJIS.WARNING} *Could not fetch coin data*`;
+      let errorMessage = `${EMOJIS.WARNING} ${bold('Could not fetch coin data')}`;
 
       if (apiError.message.includes('rate limit')) {
-        errorMessage += `\n\n${EMOJIS.LOADING} *Rate limited\\!* CoinGecko API is busy\\. Please wait a minute and try again\\.`;
+        errorMessage += `\n\n${EMOJIS.LOADING} ${bold('Rate limited!')} CoinGecko API is busy\\. Please wait a minute and try again\\.`;
       } else if (apiError.message.includes('not found')) {
-        errorMessage += `\n\n${EMOJIS.ERROR} *Cryptocurrency not found\\!* Please check the name/symbol and try again\\.`;
+        errorMessage += `\n\n${EMOJIS.ERROR} ${bold('Cryptocurrency not found!')} Please check the name/symbol and try again\\.`;
       } else if (apiError.message.includes('Network error')) {
-        errorMessage += `\n\n${EMOJIS.ERROR} *Network error\\!* Could not connect to data service\\.`;
+        errorMessage += `\n\n${EMOJIS.ERROR} ${bold('Network error!')} Could not connect to data service\\.`;
       } else {
-        errorMessage += `\n\n${EMOJIS.ERROR} ${apiError.message}`;
+        errorMessage += `\n\n${EMOJIS.ERROR} ${escapeMarkdownV2(apiError.message)}`;
       }
 
-      errorMessage += `\n\n*${EMOJIS.CHART} Try:*
+      errorMessage += `\n\n${bold(`${EMOJIS.CHART} Try:`)}
 • Wait a moment and retry
 • Use popular coins: \`/coin bitcoin\`
 • Check spelling: \`/coin ethereum\`
@@ -184,7 +194,7 @@ ${EMOJIS.REFRESH} *Live data from CoinGecko*`;
 
   } catch (error) {
     console.error("Coin command error:", error);
-    await sendMessage(env, chatId, `${EMOJIS.ERROR} Error processing coin request: ${error.message}`, 'MarkdownV2');
+    await sendMessage(env, chatId, `${EMOJIS.ERROR} Error processing coin request: ${escapeMarkdownV2(error.message)}`, 'MarkdownV2');
   }
 }
 
@@ -241,17 +251,17 @@ export async function handleCoinCallback(env, callbackQuery) {
     const volume24h = marketData.total_volume?.usd;
 
     // Create updated message
-    const updatedMessage = `${EMOJIS.COIN} *${detailedData.name} \\(${coinData.symbol.toUpperCase()}\\)*
+    const updatedMessage = `${EMOJIS.COIN} ${bold(`${detailedData.name} (${coinData.symbol.toUpperCase()})`)}
 
-*💰 Current Price:* $${formatNumber(currentPrice, currentPrice > 1 ? 2 : 6)}
-*📈 24h Change:* ${formatPercentageChange(priceChange24h)}
-*📊 Market Cap:* $${formatLargeNumber(marketCap)}
-*💱 24h Volume:* $${formatLargeNumber(volume24h)}
+${bold('💰 Current Price:')} $${safeFormatNumber(currentPrice, currentPrice > 1 ? 2 : 6)}
+${bold('📈 24h Change:')} ${safeFormatPercentageChange(priceChange24h)}
+${bold('📊 Market Cap:')} $${safeFormatLargeNumber(marketCap)}
+${bold('💱 24h Volume:')} $${safeFormatLargeNumber(volume24h)}
 
-*${EMOJIS.CHART} Interactive Chart \\(${days} days\\)*
-${EMOJIS.REFRESH} *Use buttons below to change timeframe*
+${bold(`${EMOJIS.CHART} Interactive Chart (${days} days)`)}
+${EMOJIS.REFRESH} ${bold('Use buttons below to change timeframe')}
 
-${EMOJIS.REFRESH} *Live data from CoinGecko*`;
+${EMOJIS.REFRESH} ${bold('Live data from CoinGecko')}`;
 
     // Update keyboard with current selection
     const keyboard = createTimeframeKeyboard('coin', coinId);
