@@ -169,8 +169,10 @@ ${EMOJIS.REFRESH} ${bold('Live data from CoinGecko')}`;
       
       let errorMessage = `${EMOJIS.WARNING} ${bold('Could not fetch coin data')}`;
 
-      if (apiError.message.includes('rate limit')) {
-        errorMessage += `\n\n${EMOJIS.LOADING} ${bold('Rate limited!')} CoinGecko API is busy\\. Please wait a minute and try again\\.`;
+      if (apiError.message.includes('⚠️ CoinGecko API rate limit exceeded')) {
+        errorMessage += `\n\n${apiError.message}\n\n${bold('Please wait about a minute before trying again\\.')}\n\n${EMOJIS.LOADING} ${bold('Rate limiting helps keep the service available for everyone\\.')}`;
+      } else if (apiError.message.includes('rate limit')) {
+        errorMessage += `\n\n⚠️ CoinGecko API rate limit exceeded\\. Please try again in a minute\\.`;
       } else if (apiError.message.includes('not found')) {
         errorMessage += `\n\n${EMOJIS.ERROR} ${bold('Cryptocurrency not found!')} Please check the name/symbol and try again\\.`;
       } else if (apiError.message.includes('Network error')) {

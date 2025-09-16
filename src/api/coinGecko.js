@@ -27,7 +27,7 @@ export async function fetchCoinGeckoData(endpoint) {
 
     if (!response.ok) {
       if (response.status === 429) {
-        throw new Error("CoinGecko API rate limit exceeded. Please try again in a minute.");
+        throw new Error("⚠️ CoinGecko API rate limit exceeded. Please try again in a minute.");
       } else if (response.status === 404) {
         throw new Error("Cryptocurrency not found");
       } else if (response.status >= 500) {
