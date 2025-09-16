@@ -3,6 +3,7 @@
  */
 
 import { sendMessage, createQuickActionsKeyboard } from '../api/telegram.js';
+import { bold, escapeMarkdownV2 } from '../utils/formatters.js';
 import { EMOJIS, COMMANDS } from '../config/constants.js';
 
 /**
@@ -15,26 +16,26 @@ import { EMOJIS, COMMANDS } from '../config/constants.js';
 export async function handleStart(env, chatId, command = '/start') {
   const isHelp = command === '/help';
   
-  const welcomeMessage = `${EMOJIS.WAVE} *Welcome to Crypto Bot\\!*
+  const welcomeMessage = `${EMOJIS.WAVE} ${bold('Welcome to Crypto Bot!')}
 
 I provide real\\-time cryptocurrency data, P2P trading rates, and conversions\\.
 
-*🔧 Available Commands:*
+${bold('🔧 Available Commands:')}
 
-*Basic Commands:*
+${bold('Basic Commands:')}
 • \`/start\` or \`/help\` \\- Show this help message
 • \`/coin [symbol]\` \\- Get detailed market info with interactive charts
-• \`/rate [amount] [currency] [vs\\_currency]\` \\- Convert currencies with live rates
+• \`/rate [amount] [currency] [vs_currency]\` \\- Convert currencies with live rates
 
-*P2P Trading:*
+${bold('P2P Trading:')}
 • \`/p2p [asset] [fiat] [type]\` \\- Get Binance P2P rates
 • \`/buy [amount] [asset] [fiat]\` \\- Find best rates to buy crypto with fiat
 • \`/sell [amount] [asset] [fiat]\` \\- Find best rates to sell crypto for fiat
 
-*Currency Conversion:*
+${bold('Currency Conversion:')}
 • \`/convert [amount] [from] [to]\` \\- Convert between any currencies
 
-*📝 Examples:*
+${bold('📝 Examples:')}
 • \`/coin bitcoin\` \\- Get Bitcoin info with interactive charts
 • \`/p2p USDT ETB BUY\` \\- Get USDT buying rates in ETB
 • \`/buy 100 USDT ETB\` \\- Find best rates to buy 100 USDT with ETB
@@ -42,17 +43,17 @@ I provide real\\-time cryptocurrency data, P2P trading rates, and conversions\\.
 • \`/rate 100 BTC USD\` \\- Convert 100 BTC to USD
 • \`/convert 1 ETH ADA\` \\- Convert 1 ETH to ADA
 
-*💡 Pro Tips:*
+${bold('💡 Pro Tips:')}
 • Use inline buttons for quick actions and timeframe selection
 • Charts support 1 day, 7 days, and 30 days timeframes
 • All data is cached for optimal performance
 • Rate limiting prevents abuse
 
-*🚀 Quick Actions:*
+${bold('🚀 Quick Actions:')}
 Use the buttons below for common actions\\!
 
-${isHelp ? '❓' : '👨‍💻'} **Author:** @x\\_Jonah 
-📢 **Channel:** @Jonah\\_Notice`;
+${isHelp ? '❓' : '👨‍💻'} ${bold('Author:')} @x_Jonah 
+📢 ${bold('Channel:')} @Jonah_Notice`;
 
   const keyboard = createQuickActionsKeyboard();
   
@@ -67,17 +68,17 @@ ${isHelp ? '❓' : '👨‍💻'} **Author:** @x\\_Jonah
  * @returns {Promise<void>}
  */
 export async function handleUnknownCommand(env, chatId, command) {
-  const errorMessage = `${EMOJIS.ERROR} Unknown command: \`${command}\`
+  const errorMessage = `${EMOJIS.ERROR} Unknown command: \`${escapeMarkdownV2(command)}\`
 
 ${EMOJIS.WAVE} Use \`/help\` to see all available commands\\.
 
-*🔧 Did you mean:*
+${bold('🔧 Did you mean:')}
 • \`/coin\` \\- Get cryptocurrency information
 • \`/p2p\` \\- Get P2P trading rates  
 • \`/convert\` \\- Convert between currencies
 • \`/buy\` or \`/sell\` \\- P2P trading rates
 
-*💡 Tip:* Make sure to include required parameters\\. For example:
+${bold('💡 Tip:')} Make sure to include required parameters\\. For example:
 • \`/coin bitcoin\`
 • \`/p2p USDT ETB BUY\``;
 
@@ -95,60 +96,60 @@ export async function handleQuickAction(env, callbackQuery) {
   const chatId = message.chat.id;
   
   const quickActionMessages = {
-    'quick_p2p': `${EMOJIS.MONEY} *P2P Quick Guide*
+    'quick_p2p': `${EMOJIS.MONEY} ${bold('P2P Quick Guide')}
 
 Get real\\-time Binance P2P rates:
 
-*Command format:*
+${bold('Command format:')}
 \`/p2p [asset] [fiat] [type]\`
 
-*Examples:*
+${bold('Examples:')}
 • \`/p2p\` \\- Default USDT/ETB BUY rates
 • \`/p2p USDT ETB SELL\` \\- Selling rates
 • \`/p2p BTC USD BUY\` \\- Bitcoin buying rates
 
-*Supported assets:* USDT, BTC, ETH, BNB, BUSD
-*Supported fiats:* ETB, USD, EUR, GBP, NGN, KES, GHS`,
+${bold('Supported assets:')} USDT, BTC, ETH, BNB, BUSD
+${bold('Supported fiats:')} ETB, USD, EUR, GBP, NGN, KES, GHS`,
 
-    'quick_top': `${EMOJIS.TROPHY} *Top Coins Info*
+    'quick_top': `${EMOJIS.TROPHY} ${bold('Top Coins Info')}
 
 Get detailed info about popular cryptocurrencies:
 
-*Examples:*
+${bold('Examples:')}
 • \`/coin bitcoin\` \\- Bitcoin with interactive charts
 • \`/coin ethereum\` \\- Ethereum market data
 • \`/coin cardano\` \\- ADA information
 
-*Features:*
+${bold('Features:')}
 • Live price and 24h change
 • Market cap and trading volume  
 • Interactive charts \\(1d/7d/30d\\)
 • Direct links to more info`,
 
-    'quick_convert': `${EMOJIS.EXCHANGE} *Currency Conversion*
+    'quick_convert': `${EMOJIS.EXCHANGE} ${bold('Currency Conversion')}
 
 Convert between any cryptocurrencies or fiat:
 
-*Command formats:*
+${bold('Command formats:')}
 • \`/convert [amount] [from] [to]\`
-• \`/rate [amount] [currency] [vs\\_currency]\`
+• \`/rate [amount] [currency] [vs_currency]\`
 
-*Examples:*
+${bold('Examples:')}
 • \`/convert 100 ETH ADA\` \\- Crypto to crypto
 • \`/convert 1000 ETB USDT\` \\- Fiat to crypto
 • \`/rate 1 BTC USD\` \\- Get current rate
 
-*Special:* ETB rates use live P2P data\\!`,
+${bold('Special:')} ETB rates use live P2P data\\!`,
 
-    'quick_trending': `${EMOJIS.CHART} *Trending & Analysis*
+    'quick_trending': `${EMOJIS.CHART} ${bold('Trending & Analysis')}
 
-*Coming Soon:*
+${bold('Coming Soon:')}
 • Trending cryptocurrencies
 • Market sentiment analysis
 • Price alerts and notifications
 • Portfolio tracking
 
-*Current Features:*
+${bold('Current Features:')}
 • Live price charts with multiple timeframes
 • P2P rate comparisons
 • Real\\-time market data

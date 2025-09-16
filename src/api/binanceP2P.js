@@ -4,6 +4,7 @@
 
 import { API_URLS, CACHE_TTL } from '../config/constants.js';
 import { getWithCache } from '../cache/rateLimiting.js';
+import { escapeMarkdownV2 } from '../utils/formatters.js';
 
 /**
  * Fetches P2P data from Binance backend
@@ -143,17 +144,25 @@ export function formatP2PResponse(data, asset, fiat, tradeType, maxResults = 5) 
     const advertiser = ad.advertiser;
     const adv = ad.adv;
     
-    // Use escapeMarkdown for trader names to handle special characters
-    const traderName = advertiser.nickName.replace(/[_*[\]()~`>#+=|{}.!\\-]/g, '\\$&');
+    // Use proper escaping for trader names
+    const traderName = escapeMarkdownV2(advertiser.nickName);
+    const price = escapeMarkdownV2(adv.price.toString());
+    const available = escapeMarkdownV2(adv.surplusAmount.toString());
+    const minAmount = escapeMarkdownV2(adv.minSingleTransAmount.toString());
+    const maxAmount = escapeMarkdownV2(adv.maxSingleTransAmount.toString());
+    const orders = escapeMarkdownV2(advertiser.monthOrderCount.toString());
+    const successRate = escapeMarkdownV2((advertiser.monthFinishRate * 100).toFixed(1));
 
     message += `*${index + 1}\\. ${traderName}*\n`;
-    message += `   💵 *Price:* ${adv.price} ${fiat}\n`;
-    message += `   📦 *Available:* ${adv.surplusAmount} ${asset}\n`;
-    message += `   📊 *Limits:* ${adv.minSingleTransAmount} \\- ${adv.maxSingleTransAmount} ${fiat}\n`;
-    message += `   ⭐️ *Orders:* ${advertiser.monthOrderCount} \\(${(advertiser.monthFinishRate * 100).toFixed(1)}% success\\)\n`;
+    message += `   💵 *Price:* ${price} ${fiat}\n`;
+    message += `   📦 *Available:* ${available} ${asset}\n`;
+    message += `   📊 *Limits:* ${minAmount} \\- ${maxAmount} ${fiat}\n`;
+    message += `   ⭐️ *Orders:* ${orders} \\(${successRate}% success\\)\n`;
 
     if (adv.tradeMethods?.length > 0) {
-      const methods = adv.tradeMethods.map(m => m.tradeMethodName).join(", ");
+      const methods = adv.tradeMethods
+        .map(m => escapeMarkdownV2(m.tradeMethodName))
+        .join(", ");
       message += `   🏦 *Methods:* ${methods}\n`;
     }
 

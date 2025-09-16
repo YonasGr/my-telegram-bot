@@ -9,6 +9,7 @@
 import { checkRateLimit } from './cache/rateLimiting.js';
 import { sendMessage, answerCallbackQuery } from './api/telegram.js';
 import { sanitizeInput } from './utils/validators.js';
+import { bold } from './utils/formatters.js';
 import { EMOJIS, API_URLS } from './config/constants.js';
 
 // Import command handlers
@@ -154,7 +155,7 @@ async function routeCommand(env, chatId, command, args, userInfo) {
           await handleBuy(env, chatId, args);
         } else {
           await sendMessage(env, chatId, 
-            `${EMOJIS.ERROR} *Buy command requires amount*\n\nExample: \`/buy 100 USDT ETB\`\nUse \`/help\` for more info\\.`, 'MarkdownV2');
+            `${EMOJIS.ERROR} ${bold('Buy command requires amount')}\n\nExample: \`/buy 100 USDT ETB\`\nUse \`/help\` for more info\\.`, 'MarkdownV2');
         }
         break;
 
@@ -163,7 +164,7 @@ async function routeCommand(env, chatId, command, args, userInfo) {
           await handleSell(env, chatId, args);
         } else {
           await sendMessage(env, chatId, 
-            `${EMOJIS.ERROR} *Sell command requires amount*\n\nExample: \`/sell 50 USDT ETB\`\nUse \`/help\` for more info\\.`, 'MarkdownV2');
+            `${EMOJIS.ERROR} ${bold('Sell command requires amount')}\n\nExample: \`/sell 50 USDT ETB\`\nUse \`/help\` for more info\\.`, 'MarkdownV2');
         }
         break;
 
@@ -172,7 +173,7 @@ async function routeCommand(env, chatId, command, args, userInfo) {
           await handleRate(env, chatId, args);
         } else {
           await sendMessage(env, chatId, 
-            `${EMOJIS.ERROR} *Rate command requires amount and currency*\n\nExample: \`/rate 100 BTC USD\`\nUse \`/help\` for more info\\.`, 'MarkdownV2');
+            `${EMOJIS.ERROR} ${bold('Rate command requires amount and currency')}\n\nExample: \`/rate 100 BTC USD\`\nUse \`/help\` for more info\\.`, 'MarkdownV2');
         }
         break;
 
@@ -181,7 +182,7 @@ async function routeCommand(env, chatId, command, args, userInfo) {
           await handleConvert(env, chatId, args);
         } else {
           await sendMessage(env, chatId, 
-            `${EMOJIS.ERROR} *Convert command requires amount, from, and to currencies*\n\nExample: \`/convert 100 ETH ADA\`\nUse \`/help\` for more info\\.`, 'MarkdownV2');
+            `${EMOJIS.ERROR} ${bold('Convert command requires amount, from, and to currencies')}\n\nExample: \`/convert 100 ETH ADA\`\nUse \`/help\` for more info\\.`, 'MarkdownV2');
         }
         break;
 
@@ -190,7 +191,7 @@ async function routeCommand(env, chatId, command, args, userInfo) {
           await handleCoin(env, chatId, args);
         } else {
           await sendMessage(env, chatId, 
-            `${EMOJIS.ERROR} *Coin command requires symbol*\n\nExample: \`/coin bitcoin\`\nUse \`/help\` for more info\\.`, 'MarkdownV2');
+            `${EMOJIS.ERROR} ${bold('Coin command requires symbol')}\n\nExample: \`/coin bitcoin\`\nUse \`/help\` for more info\\.`, 'MarkdownV2');
         }
         break;
 

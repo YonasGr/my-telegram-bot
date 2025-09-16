@@ -20,6 +20,7 @@ export function escapeMarkdown(text) {
  */
 export function escapeMarkdownV2(text) {
   if (typeof text !== 'string') return '';
+  // All special characters that need escaping in MarkdownV2
   const escapeChars = '_*[]()~`>#+-=|{}.!\\';
   return text.split('').map(c => escapeChars.includes(c) ? '\\' + c : c).join('');
 }
@@ -110,4 +111,91 @@ export function capitalizeWords(text) {
  */
 export function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/**
+ * Safely formats a number for MarkdownV2 with proper escaping
+ * @param {number} value - Number to format
+ * @param {number} decimals - Number of decimal places
+ * @returns {string} Escaped formatted number
+ */
+export function safeFormatNumber(value, decimals = 2) {
+  const formatted = formatNumber(value, decimals);
+  return escapeMarkdownV2(formatted);
+}
+
+/**
+ * Safely formats large numbers for MarkdownV2 with proper escaping
+ * @param {number} num - Number to format
+ * @returns {string} Escaped formatted large number
+ */
+export function safeFormatLargeNumber(num) {
+  const formatted = formatLargeNumber(num);
+  return escapeMarkdownV2(formatted);
+}
+
+/**
+ * Safely formats percentage change for MarkdownV2 with proper escaping
+ * @param {number} change - Percentage change
+ * @returns {string} Escaped formatted percentage with emoji
+ */
+export function safeFormatPercentageChange(change) {
+  const formatted = formatPercentageChange(change);
+  return escapeMarkdownV2(formatted);
+}
+
+/**
+ * Creates a safe MarkdownV2 message with proper escaping for all dynamic content
+ * @param {string} template - Message template with placeholders
+ * @param {object} values - Values to substitute (will be escaped automatically)
+ * @returns {string} Safe MarkdownV2 message
+ */
+export function createSafeMarkdownV2Message(template, values = {}) {
+  let message = template;
+  
+  // Replace placeholders with escaped values
+  Object.entries(values).forEach(([key, value]) => {
+    const placeholder = `{${key}}`;
+    const escapedValue = escapeMarkdownV2(String(value));
+    message = message.replaceAll(placeholder, escapedValue);
+  });
+  
+  return message;
+}
+
+/**
+ * Wraps text in MarkdownV2 bold formatting with proper escaping
+ * @param {string} text - Text to make bold
+ * @returns {string} Bold formatted text for MarkdownV2
+ */
+export function bold(text) {
+  return `*${escapeMarkdownV2(String(text))}*`;
+}
+
+/**
+ * Wraps text in MarkdownV2 italic formatting with proper escaping
+ * @param {string} text - Text to make italic
+ * @returns {string} Italic formatted text for MarkdownV2
+ */
+export function italic(text) {
+  return `_${escapeMarkdownV2(String(text))}_`;
+}
+
+/**
+ * Wraps text in MarkdownV2 code formatting with proper escaping
+ * @param {string} text - Text to format as code
+ * @returns {string} Code formatted text for MarkdownV2
+ */
+export function code(text) {
+  return `\`${escapeMarkdownV2(String(text))}\``;
+}
+
+/**
+ * Creates a MarkdownV2 link with proper escaping
+ * @param {string} text - Link text
+ * @param {string} url - URL (should be valid, no escaping needed for URLs)
+ * @returns {string} Link formatted for MarkdownV2
+ */
+export function link(text, url) {
+  return `[${escapeMarkdownV2(String(text))}](${url})`;
 }
