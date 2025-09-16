@@ -103,7 +103,7 @@ No active offers to buy *${asset}* with *${fiat}* right now\\.
       const conservativeCost = amount * conservativeRate;
       const averageCost = amount * averageRate;
 
-      const buyMessage = `${EMOJIS.MONEY} *Buy ${amount} ${asset} with ${fiat}*
+      let buyMessage = `${EMOJIS.MONEY} *Buy ${amount} ${asset} with ${fiat}*
 
 *💰 Cost Analysis:*
 • *Best rate:* ${formatNumber(bestCost, 2)} ${fiat} \\(${formatNumber(bestRate, 2)} per ${asset}\\)
@@ -255,7 +255,7 @@ No active offers to sell *${asset}* for *${fiat}* right now\\.
       const conservativeEarnings = amount * conservativeRate;
       const averageEarnings = amount * averageRate;
 
-      const sellMessage = `${EMOJIS.MONEY} *Sell ${amount} ${asset} for ${fiat}*
+      let sellMessage = `${EMOJIS.MONEY} *Sell ${amount} ${asset} for ${fiat}*
 
 *💰 Earnings Analysis:*
 • *Best rate:* ${formatNumber(bestEarnings, 2)} ${fiat} \\(${formatNumber(bestRate, 2)} per ${asset}\\)
