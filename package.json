@@ -26,7 +26,7 @@
 	"keywords": [],
 	"author": "",
 	"license": "ISC",
-	"type": "commonjs",
+	"type": "module",
 	"bugs": {
 		"url": "https://github.com/YonasGr/my-telegram-bot/issues"
 	},

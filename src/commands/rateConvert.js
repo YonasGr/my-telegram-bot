@@ -1,0 +1,394 @@
+/**
+ * Rate and Convert command handlers
+ */
+
+import { sendMessage, sendLoadingMessage, updateLoadingMessage } from '../api/telegram.js';
+import { searchCoinSymbol, getMultipleCoinPrices } from '../api/coinGecko.js';
+import { getBestP2PRate } from '../api/binanceP2P.js';
+import { validateAmount, validateCurrency, validateConversion } from '../utils/validators.js';
+import { formatNumber } from '../utils/formatters.js';
+import { EMOJIS, SUPPORTED_FIATS } from '../config/constants.js';
+
+/**
+ * Handles /rate command for currency conversion
+ * @param {object} env - Cloudflare environment
+ * @param {string|number} chatId - Chat ID
+ * @param {string[]} args - Command arguments
+ * @returns {Promise<void>}
+ */
+export async function handleRate(env, chatId, args) {
+  try {
+    const amount = args[1] ? parseFloat(args[1]) : null;
+    const currency = (args[2] || 'USDT').toUpperCase();
+    const vsCurrency = (args[3] || 'USD').toUpperCase();
+
+    // Validate arguments
+    if (!amount) {
+      const helpMessage = `${EMOJIS.ERROR} *Rate Command Help*
+
+*${EMOJIS.EXCHANGE} Format:*
+\`/rate [amount] [currency] [vs\\_currency]\`
+
+*📝 Examples:*
+• \`/rate 100 BTC USD\` \\- Convert 100 BTC to USD
+• \`/rate 1000 USDT ETB\` \\- USDT to ETB \\(uses P2P rates\\)
+• \`/rate 50 ETH EUR\` \\- Convert 50 ETH to EUR
+• \`/rate 1 BTC\` \\- Default to USD
+
+*💡 Notes:*
+• ETB rates use live P2P data
+• Other conversions use CoinGecko rates
+• Default target currency is USD`;
+
+      await sendMessage(env, chatId, helpMessage, 'MarkdownV2');
+      return;
+    }
+
+    const amountValidation = validateAmount(amount);
+    if (!amountValidation.isValid) {
+      await sendMessage(env, chatId, `${EMOJIS.ERROR} ${amountValidation.error}`, 'MarkdownV2');
+      return;
+    }
+
+    const currencyValidation = validateCurrency(currency);
+    const vsCurrencyValidation = validateCurrency(vsCurrency);
+
+    if (!currencyValidation.isValid || !vsCurrencyValidation.isValid) {
+      const error = currencyValidation.error || vsCurrencyValidation.error;
+      await sendMessage(env, chatId, `${EMOJIS.ERROR} ${error}`, 'MarkdownV2');
+      return;
+    }
+
+    // Send loading message
+    const loadingMsg = await sendLoadingMessage(env, chatId, 
+      `${EMOJIS.LOADING} Converting ${amount} ${currency} to ${vsCurrency}...`);
+
+    try {
+      // Check if this involves P2P fiat currencies (ETB and other supported fiats)
+      if (SUPPORTED_FIATS.includes(vsCurrency)) {
+        await handleP2PRate(env, chatId, amount, currency, vsCurrency, loadingMsg);
+        return;
+      }
+
+      // Handle standard crypto-to-crypto/fiat conversion
+      await handleStandardRate(env, chatId, amount, currency, vsCurrency, loadingMsg);
+
+    } catch (apiError) {
+      console.error("Rate API error:", apiError);
+      
+      let errorMessage = `${EMOJIS.WARNING} *Could not fetch conversion rate*
+
+${apiError.message}
+
+*${EMOJIS.CHART} Try:*
+• Wait a moment and retry
+• Check currency symbols
+• Try popular pairs like BTC/USD
+• Use \`/help\` for other commands`;
+
+      if (loadingMsg?.result?.message_id) {
+        await updateLoadingMessage(env, chatId, loadingMsg.result.message_id, errorMessage, 'MarkdownV2');
+      } else {
+        await sendMessage(env, chatId, errorMessage, 'MarkdownV2');
+      }
+    }
+
+  } catch (error) {
+    console.error("Rate command error:", error);
+    await sendMessage(env, chatId, `${EMOJIS.ERROR} Error processing rate request: ${error.message}`, 'MarkdownV2');
+  }
+}
+
+/**
+ * Handles P2P rate conversion (involving supported fiat currencies)
+ * @param {object} env - Cloudflare environment
+ * @param {string|number} chatId - Chat ID
+ * @param {number} amount - Amount to convert
+ * @param {string} currency - Source currency
+ * @param {string} vsCurrency - Target currency (fiat)
+ * @param {object} loadingMsg - Loading message to update
+ * @returns {Promise<void>}
+ */
+async function handleP2PRate(env, chatId, amount, currency, vsCurrency, loadingMsg) {
+  try {
+    // Get P2P rate for the currency pair
+    const p2pRate = await getBestP2PRate(env, currency, vsCurrency, 'BUY');
+    
+    if (!p2pRate) {
+      const noRateMessage = `${EMOJIS.ERROR} *No P2P rates available*
+
+Could not find ${currency}/${vsCurrency} P2P rates right now\\.
+
+*${EMOJIS.CHART} Suggestions:*
+• Try USDT which has the most liquidity
+• Check supported pairs: \`/p2p\` command
+• Try again in a few minutes`;
+
+      if (loadingMsg?.result?.message_id) {
+        await updateLoadingMessage(env, chatId, loadingMsg.result.message_id, noRateMessage, 'MarkdownV2');
+      } else {
+        await sendMessage(env, chatId, noRateMessage, 'MarkdownV2');
+      }
+      return;
+    }
+
+    const result = amount * p2pRate.price;
+    
+    const rateMessage = `${EMOJIS.EXCHANGE} *P2P Rate Conversion*
+
+*${amount} ${currency}* ≈ *${formatNumber(result, 2)} ${vsCurrency}*
+
+*📊 P2P Rate Details:*
+• *Current Rate:* 1 ${currency} = ${formatNumber(p2pRate.price, 2)} ${vsCurrency}
+• *Best Trader:* ${p2pRate.trader.name.replace(/[_*[\]()~`>#+=|{}.!\\-]/g, '\\$&')}
+• *Available:* ${formatNumber(p2pRate.availableAmount)} ${currency}
+• *Trade Limits:* ${formatNumber(p2pRate.minAmount)} \\- ${formatNumber(p2pRate.maxAmount)} ${vsCurrency}
+• *Success Rate:* ${formatNumber(p2pRate.trader.successRate, 1)}% \\(${p2pRate.trader.orders} orders\\)
+
+${p2pRate.paymentMethods.length > 0 ? `*🏦 Payment Methods:* ${p2pRate.paymentMethods.join(", ")}` : ''}
+
+${EMOJIS.REFRESH} *Live P2P data from Binance*`;
+
+    if (loadingMsg?.result?.message_id) {
+      await updateLoadingMessage(env, chatId, loadingMsg.result.message_id, rateMessage, 'MarkdownV2');
+    } else {
+      await sendMessage(env, chatId, rateMessage, 'MarkdownV2');
+    }
+
+  } catch (error) {
+    throw new Error(`P2P rate error: ${error.message}`);
+  }
+}
+
+/**
+ * Handles standard rate conversion using CoinGecko
+ * @param {object} env - Cloudflare environment
+ * @param {string|number} chatId - Chat ID
+ * @param {number} amount - Amount to convert
+ * @param {string} currency - Source currency
+ * @param {string} vsCurrency - Target currency
+ * @param {object} loadingMsg - Loading message to update
+ * @returns {Promise<void>}
+ */
+async function handleStandardRate(env, chatId, amount, currency, vsCurrency, loadingMsg) {
+  try {
+    // Search for the coin
+    const coinData = await searchCoinSymbol(env, currency);
+    if (!coinData) {
+      throw new Error(`Could not find currency: ${currency}`);
+    }
+
+    // Get price data
+    const prices = await getMultipleCoinPrices(env, [coinData.id], [vsCurrency.toLowerCase()]);
+    const price = prices?.[coinData.id]?.[vsCurrency.toLowerCase()];
+    const priceChange24h = prices?.[coinData.id]?.[`${vsCurrency.toLowerCase()}_24h_change`];
+
+    if (price === undefined) {
+      throw new Error(`Could not get price for ${currency}/${vsCurrency}`);
+    }
+
+    const result = amount * price;
+    const changeIndicator = priceChange24h !== undefined 
+      ? `\\(${priceChange24h >= 0 ? '+' : ''}${formatNumber(priceChange24h, 2)}% 24h\\)` 
+      : '';
+
+    const rateMessage = `${EMOJIS.EXCHANGE} *Real\\-time Rate Conversion*
+
+*${amount} ${currency}* ≈ *${formatNumber(result, vsCurrency === 'USD' ? 2 : 6)} ${vsCurrency}*
+
+*📊 Market Rate:*
+• *Current Price:* 1 ${currency} = ${formatNumber(price, 6)} ${vsCurrency}
+${priceChange24h !== undefined ? `• *24h Change:* ${priceChange24h >= 0 ? '🟢' : '🔴'} ${priceChange24h >= 0 ? '+' : ''}${formatNumber(priceChange24h, 2)}%` : ''}
+
+*${EMOJIS.COIN} Coin Info:*
+• *Full Name:* ${coinData.name}
+• *Symbol:* ${coinData.symbol.toUpperCase()}
+
+${EMOJIS.REFRESH} *Live data from CoinGecko*`;
+
+    if (loadingMsg?.result?.message_id) {
+      await updateLoadingMessage(env, chatId, loadingMsg.result.message_id, rateMessage, 'MarkdownV2');
+    } else {
+      await sendMessage(env, chatId, rateMessage, 'MarkdownV2');
+    }
+
+  } catch (error) {
+    throw new Error(`Standard rate error: ${error.message}`);
+  }
+}
+
+/**
+ * Handles /convert command for any-to-any currency conversion
+ * @param {object} env - Cloudflare environment
+ * @param {string|number} chatId - Chat ID
+ * @param {string[]} args - Command arguments
+ * @returns {Promise<void>}
+ */
+export async function handleConvert(env, chatId, args) {
+  try {
+    const amount = args[1] ? parseFloat(args[1]) : null;
+    const fromCurrency = args[2];
+    const toCurrency = args[3];
+
+    // Validate arguments
+    if (!amount || !fromCurrency || !toCurrency) {
+      const helpMessage = `${EMOJIS.ERROR} *Convert Command Help*
+
+*${EMOJIS.EXCHANGE} Format:*
+\`/convert [amount] [from] [to]\`
+
+*📝 Examples:*
+• \`/convert 100 ETH ADA\` \\- Crypto to crypto
+• \`/convert 1000 ETB USDT\` \\- Fiat to crypto \\(P2P rates\\)
+• \`/convert 1 BTC EUR\` \\- Crypto to fiat
+• \`/convert 50 USDT ETB\` \\- Crypto to fiat \\(P2P rates\\)
+
+*💡 Notes:*
+• All parameters required
+• ETB conversions use P2P data
+• Supports crypto ↔ crypto and crypto ↔ fiat
+• Live market rates from CoinGecko & Binance`;
+
+      await sendMessage(env, chatId, helpMessage, 'MarkdownV2');
+      return;
+    }
+
+    const validation = validateConversion(amount, fromCurrency, toCurrency);
+    if (!validation.isValid) {
+      const errorMessage = `${EMOJIS.ERROR} *Conversion Errors:*
+
+${validation.errors.map(err => `• ${err}`).join('\n')}`;
+
+      await sendMessage(env, chatId, errorMessage, 'MarkdownV2');
+      return;
+    }
+
+    // Send loading message
+    const loadingMsg = await sendLoadingMessage(env, chatId, 
+      `${EMOJIS.LOADING} Converting ${amount} ${fromCurrency.toUpperCase()} to ${toCurrency.toUpperCase()}...`);
+
+    try {
+      await performConversion(env, chatId, amount, fromCurrency, toCurrency, loadingMsg);
+
+    } catch (apiError) {
+      console.error("Convert API error:", apiError);
+      
+      let errorMessage = `${EMOJIS.WARNING} *Conversion failed*
+
+${apiError.message}
+
+*${EMOJIS.CHART} Try:*
+• Check currency names/symbols
+• Use popular pairs like ETH/BTC
+• Wait a moment and retry
+• ETB pairs: use USDT/ETB, BTC/ETB etc`;
+
+      if (loadingMsg?.result?.message_id) {
+        await updateLoadingMessage(env, chatId, loadingMsg.result.message_id, errorMessage, 'MarkdownV2');
+      } else {
+        await sendMessage(env, chatId, errorMessage, 'MarkdownV2');
+      }
+    }
+
+  } catch (error) {
+    console.error("Convert command error:", error);
+    await sendMessage(env, chatId, `${EMOJIS.ERROR} Error processing convert request: ${error.message}`, 'MarkdownV2');
+  }
+}
+
+/**
+ * Performs the actual currency conversion
+ * @param {object} env - Cloudflare environment
+ * @param {string|number} chatId - Chat ID
+ * @param {number} amount - Amount to convert
+ * @param {string} fromCurrency - Source currency
+ * @param {string} toCurrency - Target currency
+ * @param {object} loadingMsg - Loading message to update
+ * @returns {Promise<void>}
+ */
+async function performConversion(env, chatId, amount, fromCurrency, toCurrency, loadingMsg) {
+  const fromSymbol = fromCurrency.toLowerCase();
+  const toSymbol = toCurrency.toLowerCase();
+
+  let fromPriceUSD, toPriceUSD;
+  let isFromP2P = false, isToP2P = false;
+
+  // Handle P2P rates for ETB and other supported fiats
+  if (fromSymbol === 'etb' || SUPPORTED_FIATS.includes(fromSymbol.toUpperCase())) {
+    const p2pRate = await getBestP2PRate(env, 'USDT', fromSymbol.toUpperCase(), 'BUY');
+    if (p2pRate) {
+      fromPriceUSD = 1 / p2pRate.price; // ETB to USD
+      isFromP2P = true;
+    }
+  }
+
+  if (toSymbol === 'etb' || SUPPORTED_FIATS.includes(toSymbol.toUpperCase())) {
+    const p2pRate = await getBestP2PRate(env, 'USDT', toSymbol.toUpperCase(), 'SELL');
+    if (p2pRate) {
+      toPriceUSD = p2pRate.price; // USD to ETB
+      isToP2P = true;
+    }
+  }
+
+  // Handle CoinGecko rates
+  const coinIdsToFetch = [];
+  let fromCoinId, toCoinId;
+
+  if (fromPriceUSD === undefined) {
+    const fromCoin = await searchCoinSymbol(env, fromSymbol);
+    if (!fromCoin) throw new Error(`Unknown currency: ${fromCurrency}`);
+    fromCoinId = fromCoin.id;
+    coinIdsToFetch.push(fromCoinId);
+  }
+
+  if (toPriceUSD === undefined) {
+    const toCoin = await searchCoinSymbol(env, toSymbol);
+    if (!toCoin) throw new Error(`Unknown currency: ${toCurrency}`);
+    toCoinId = toCoin.id;
+    if (fromCoinId !== toCoinId) {
+      coinIdsToFetch.push(toCoinId);
+    }
+  }
+
+  // Fetch CoinGecko prices if needed
+  if (coinIdsToFetch.length > 0) {
+    const prices = await getMultipleCoinPrices(env, coinIdsToFetch, ['usd']);
+    if (!prices || Object.keys(prices).length === 0) {
+      throw new Error('Failed to get crypto prices');
+    }
+
+    if (fromPriceUSD === undefined) fromPriceUSD = prices[fromCoinId]?.usd;
+    if (toPriceUSD === undefined) toPriceUSD = prices[toCoinId]?.usd;
+  }
+
+  // Final validation
+  if (fromPriceUSD === undefined || toPriceUSD === undefined) {
+    throw new Error(`Could not find prices for ${fromCurrency} or ${toCurrency}`);
+  }
+
+  // Calculate conversion
+  const result = (amount * fromPriceUSD) / toPriceUSD;
+  const conversionRate = fromPriceUSD / toPriceUSD;
+
+  const convertMessage = `${EMOJIS.EXCHANGE} *Currency Conversion*
+
+*${amount} ${fromCurrency.toUpperCase()}* ≈ *${formatNumber(result, 6)} ${toCurrency.toUpperCase()}*
+
+*📊 Conversion Details:*
+• *Rate:* 1 ${fromCurrency.toUpperCase()} = ${formatNumber(conversionRate, 6)} ${toCurrency.toUpperCase()}
+• *USD Values:*
+  \\- 1 ${fromCurrency.toUpperCase()} = $${formatNumber(fromPriceUSD, 6)}
+  \\- 1 ${toCurrency.toUpperCase()} = $${formatNumber(toPriceUSD, 6)}
+
+*${EMOJIS.CHART} Data Sources:*
+${isFromP2P ? `• ${fromCurrency.toUpperCase()}: Binance P2P rates` : `• ${fromCurrency.toUpperCase()}: CoinGecko market data`}
+${isToP2P ? `• ${toCurrency.toUpperCase()}: Binance P2P rates` : `• ${toCurrency.toUpperCase()}: CoinGecko market data`}
+
+${EMOJIS.REFRESH} *Live data from multiple sources*`;
+
+  if (loadingMsg?.result?.message_id) {
+    await updateLoadingMessage(env, chatId, loadingMsg.result.message_id, convertMessage, 'MarkdownV2');
+  } else {
+    await sendMessage(env, chatId, convertMessage, 'MarkdownV2');
+  }
+}
