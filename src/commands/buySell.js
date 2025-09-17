@@ -5,7 +5,7 @@
 import { sendMessage, sendLoadingMessage, updateLoadingMessage } from '../api/telegram.js';
 import { getP2PDataWithCache, getBestP2PRate } from '../api/binanceP2P.js';
 import { validateAmount, validateP2PRate } from '../utils/validators.js';
-import { safeFormatNumber, bold, escapeMarkdownV2 } from '../utils/formatters.js';
+import { safeFormatNumber, bold, escapeMarkdownV2, formatNumber } from '../utils/formatters.js';
 import { EMOJIS } from '../config/constants.js';
 
 /**
@@ -106,15 +106,15 @@ No active offers to buy *${asset}* with *${fiat}* right now\\.
       let buyMessage = `${EMOJIS.MONEY} *Buy ${amount} ${asset} with ${fiat}*
 
 *💰 Cost Analysis:*
-• *Best rate:* ${formatNumber(bestCost, 2)} ${fiat} \\(${formatNumber(bestRate, 2)} per ${asset}\\)
-• *Conservative:* ${formatNumber(conservativeCost, 2)} ${fiat} \\(${formatNumber(conservativeRate, 2)} per ${asset}\\)
-• *Average rate:* ${formatNumber(averageCost, 2)} ${fiat} \\(${formatNumber(averageRate, 2)} per ${asset}\\)
+• *Best rate:* ${safeFormatNumber(bestCost, 2)} ${fiat} \\(${safeFormatNumber(bestRate, 2)} per ${asset}\\)
+• *Conservative:* ${safeFormatNumber(conservativeCost, 2)} ${fiat} \\(${safeFormatNumber(conservativeRate, 2)} per ${asset}\\)
+• *Average rate:* ${safeFormatNumber(averageCost, 2)} ${fiat} \\(${safeFormatNumber(averageRate, 2)} per ${asset}\\)
 
 *🏆 Best Offer:*
-👤 *Trader:* ${bestOffer.advertiser.nickName.replace(/[_*[\]()~`>#+=|{}.!\\-]/g, '\\$&')}
-📊 *Available:* ${bestOffer.adv.surplusAmount} ${asset}
-📈 *Limits:* ${bestOffer.adv.minSingleTransAmount} \\- ${bestOffer.adv.maxSingleTransAmount} ${fiat}
-⭐ *Orders:* ${bestOffer.advertiser.monthOrderCount} \\(${(bestOffer.advertiser.monthFinishRate * 100).toFixed(1)}% success\\)`;
+👤 *Trader:* ${escapeMarkdownV2(bestOffer.advertiser.nickName)}
+📊 *Available:* ${safeFormatNumber(bestOffer.adv.surplusAmount)} ${asset}
+📈 *Limits:* ${safeFormatNumber(bestOffer.adv.minSingleTransAmount)} \\- ${safeFormatNumber(bestOffer.adv.maxSingleTransAmount)} ${fiat}
+⭐ *Orders:* ${escapeMarkdownV2(bestOffer.advertiser.monthOrderCount.toString())} \\(${safeFormatNumber(bestOffer.advertiser.monthFinishRate * 100, 1)}% success\\)`;
 
       // Add payment methods if available
       if (bestOffer.adv.tradeMethods?.length > 0) {
@@ -125,7 +125,7 @@ No active offers to buy *${asset}* with *${fiat}* right now\\.
       const finalMessage = `${buyMessage}
 
 ${EMOJIS.CHART} *Market Insight:*
-Price difference between best and 5th offer: ${formatNumber(((conservativeRate - bestRate) / bestRate) * 100, 1)}%
+Price difference between best and 5th offer: ${safeFormatNumber(((conservativeRate - bestRate) / bestRate) * 100, 1)}%
 
 ${EMOJIS.REFRESH} *Live data from Binance P2P*`;
 
@@ -140,7 +140,20 @@ ${EMOJIS.REFRESH} *Live data from Binance P2P*`;
       
       let errorMessage = `${EMOJIS.WARNING} *Could not fetch buying rates*
 
-${apiError.message}
+${escapeMarkdownV2(apiError.message)}`;
+
+      if (apiError.message.includes('rate limit')) {
+        errorMessage = `${EMOJIS.WARNING} *Service Rate Limited*
+
+⚠️ P2P service rate limit exceeded\\. Please try again in a minute\\.
+
+${bold('Rate limits help:')}
+• Keep service fast and reliable
+• Prevent system overload  
+• Ensure fair access for all users`;
+      }
+
+      errorMessage += `
 
 *${EMOJIS.CHART} Suggestions:*
 • Wait a moment and try again
@@ -258,15 +271,15 @@ No active offers to sell *${asset}* for *${fiat}* right now\\.
       let sellMessage = `${EMOJIS.MONEY} *Sell ${amount} ${asset} for ${fiat}*
 
 *💰 Earnings Analysis:*
-• *Best rate:* ${formatNumber(bestEarnings, 2)} ${fiat} \\(${formatNumber(bestRate, 2)} per ${asset}\\)
-• *Conservative:* ${formatNumber(conservativeEarnings, 2)} ${fiat} \\(${formatNumber(conservativeRate, 2)} per ${asset}\\)  
-• *Average rate:* ${formatNumber(averageEarnings, 2)} ${fiat} \\(${formatNumber(averageRate, 2)} per ${asset}\\)
+• *Best rate:* ${safeFormatNumber(bestEarnings, 2)} ${fiat} \\(${safeFormatNumber(bestRate, 2)} per ${asset}\\)
+• *Conservative:* ${safeFormatNumber(conservativeEarnings, 2)} ${fiat} \\(${safeFormatNumber(conservativeRate, 2)} per ${asset}\\)  
+• *Average rate:* ${safeFormatNumber(averageEarnings, 2)} ${fiat} \\(${safeFormatNumber(averageRate, 2)} per ${asset}\\)
 
 *🏆 Best Offer:*
-👤 *Trader:* ${bestOffer.advertiser.nickName.replace(/[_*[\]()~`>#+=|{}.!\\-]/g, '\\$&')}
-📊 *Wants:* ${bestOffer.adv.surplusAmount} ${asset}
-📈 *Limits:* ${bestOffer.adv.minSingleTransAmount} \\- ${bestOffer.adv.maxSingleTransAmount} ${fiat}
-⭐ *Orders:* ${bestOffer.advertiser.monthOrderCount} \\(${(bestOffer.advertiser.monthFinishRate * 100).toFixed(1)}% success\\)`;
+👤 *Trader:* ${escapeMarkdownV2(bestOffer.advertiser.nickName)}
+📊 *Wants:* ${safeFormatNumber(bestOffer.adv.surplusAmount)} ${asset}
+📈 *Limits:* ${safeFormatNumber(bestOffer.adv.minSingleTransAmount)} \\- ${safeFormatNumber(bestOffer.adv.maxSingleTransAmount)} ${fiat}
+⭐ *Orders:* ${escapeMarkdownV2(bestOffer.advertiser.monthOrderCount.toString())} \\(${safeFormatNumber(bestOffer.advertiser.monthFinishRate * 100, 1)}% success\\)`;
 
       // Add payment methods if available
       if (bestOffer.adv.tradeMethods?.length > 0) {
@@ -277,7 +290,7 @@ No active offers to sell *${asset}* for *${fiat}* right now\\.
       const finalMessage = `${sellMessage}
 
 ${EMOJIS.CHART} *Market Insight:*
-Price difference between best and 5th offer: ${formatNumber(((bestRate - conservativeRate) / bestRate) * 100, 1)}%
+Price difference between best and 5th offer: ${safeFormatNumber(((bestRate - conservativeRate) / bestRate) * 100, 1)}%
 
 ${EMOJIS.REFRESH} *Live data from Binance P2P*`;
 
@@ -292,7 +305,20 @@ ${EMOJIS.REFRESH} *Live data from Binance P2P*`;
       
       let errorMessage = `${EMOJIS.WARNING} *Could not fetch selling rates*
 
-${apiError.message}
+${escapeMarkdownV2(apiError.message)}`;
+
+      if (apiError.message.includes('rate limit')) {
+        errorMessage = `${EMOJIS.WARNING} *Service Rate Limited*
+
+⚠️ P2P service rate limit exceeded\\. Please try again in a minute\\.
+
+${bold('Rate limits help:')}
+• Keep service fast and reliable
+• Prevent system overload
+• Ensure fair access for all users`;
+      }
+
+      errorMessage += `
 
 *${EMOJIS.CHART} Suggestions:*
 • Wait a moment and try again

@@ -6,7 +6,7 @@ import { sendMessage, sendLoadingMessage, updateLoadingMessage } from '../api/te
 import { searchCoinSymbol, getMultipleCoinPrices } from '../api/coinGecko.js';
 import { getBestP2PRate } from '../api/binanceP2P.js';
 import { validateAmount, validateCurrency, validateConversion } from '../utils/validators.js';
-import { safeFormatNumber, bold, escapeMarkdownV2 } from '../utils/formatters.js';
+import { safeFormatNumber, bold, escapeMarkdownV2, formatNumber } from '../utils/formatters.js';
 import { EMOJIS, SUPPORTED_FIATS } from '../config/constants.js';
 
 /**
@@ -78,7 +78,29 @@ ${bold('💡 Notes:')}
       
       let errorMessage = `${EMOJIS.WARNING} *Could not fetch conversion rate*
 
-${apiError.message}
+${escapeMarkdownV2(apiError.message)}`;
+
+      if (apiError.message.includes('⚠️ CoinGecko API rate limit exceeded')) {
+        errorMessage = `${EMOJIS.WARNING} *Rate Limit Reached*
+
+⚠️ CoinGecko API rate limit exceeded\\. Please try again in a minute\\.
+
+${bold('Why rate limits exist:')}
+• Ensures fair access for all users
+• Prevents service overload
+• Maintains data quality
+
+${bold('What you can do:')}
+• Wait 60 seconds and try again
+• Use cached data if available
+• Try simpler queries first`;
+      } else if (apiError.message.includes('rate limit')) {
+        errorMessage = `${EMOJIS.WARNING} *Service Busy*
+
+⚠️ CoinGecko API rate limit exceeded\\. Please try again in a minute\\.`;
+      }
+
+      errorMessage += `
 
 *${EMOJIS.CHART} Try:*
 • Wait a moment and retry
@@ -136,16 +158,16 @@ Could not find ${currency}/${vsCurrency} P2P rates right now\\.
     
     const rateMessage = `${EMOJIS.EXCHANGE} *P2P Rate Conversion*
 
-*${amount} ${currency}* ≈ *${formatNumber(result, 2)} ${vsCurrency}*
+*${amount} ${currency}* ≈ *${safeFormatNumber(result, 2)} ${vsCurrency}*
 
 *📊 P2P Rate Details:*
-• *Current Rate:* 1 ${currency} = ${formatNumber(p2pRate.price, 2)} ${vsCurrency}
-• *Best Trader:* ${p2pRate.trader.name.replace(/[_*[\]()~`>#+=|{}.!\\-]/g, '\\$&')}
-• *Available:* ${formatNumber(p2pRate.availableAmount)} ${currency}
-• *Trade Limits:* ${formatNumber(p2pRate.minAmount)} \\- ${formatNumber(p2pRate.maxAmount)} ${vsCurrency}
-• *Success Rate:* ${formatNumber(p2pRate.trader.successRate, 1)}% \\(${p2pRate.trader.orders} orders\\)
+• *Current Rate:* 1 ${currency} = ${safeFormatNumber(p2pRate.price, 2)} ${vsCurrency}
+• *Best Trader:* ${escapeMarkdownV2(p2pRate.trader.name)}
+• *Available:* ${safeFormatNumber(p2pRate.availableAmount)} ${currency}
+• *Trade Limits:* ${safeFormatNumber(p2pRate.minAmount)} \\- ${safeFormatNumber(p2pRate.maxAmount)} ${vsCurrency}
+• *Success Rate:* ${safeFormatNumber(p2pRate.trader.successRate, 1)}% \\(${escapeMarkdownV2(p2pRate.trader.orders.toString())} orders\\)
 
-${p2pRate.paymentMethods.length > 0 ? `*🏦 Payment Methods:* ${p2pRate.paymentMethods.join(", ")}` : ''}
+${p2pRate.paymentMethods.length > 0 ? `*🏦 Payment Methods:* ${escapeMarkdownV2(p2pRate.paymentMethods.join(", "))}` : ''}
 
 ${EMOJIS.REFRESH} *Live P2P data from Binance*`;
 
@@ -189,20 +211,20 @@ async function handleStandardRate(env, chatId, amount, currency, vsCurrency, loa
 
     const result = amount * price;
     const changeIndicator = priceChange24h !== undefined 
-      ? `\\(${priceChange24h >= 0 ? '+' : ''}${formatNumber(priceChange24h, 2)}% 24h\\)` 
+      ? `\\(${priceChange24h >= 0 ? '+' : ''}${safeFormatNumber(priceChange24h, 2)}% 24h\\)` 
       : '';
 
     const rateMessage = `${EMOJIS.EXCHANGE} *Real\\-time Rate Conversion*
 
-*${amount} ${currency}* ≈ *${formatNumber(result, vsCurrency === 'USD' ? 2 : 6)} ${vsCurrency}*
+*${amount} ${currency}* ≈ *${safeFormatNumber(result, vsCurrency === 'USD' ? 2 : 6)} ${vsCurrency}*
 
 *📊 Market Rate:*
-• *Current Price:* 1 ${currency} = ${formatNumber(price, 6)} ${vsCurrency}
-${priceChange24h !== undefined ? `• *24h Change:* ${priceChange24h >= 0 ? '🟢' : '🔴'} ${priceChange24h >= 0 ? '+' : ''}${formatNumber(priceChange24h, 2)}%` : ''}
+• *Current Price:* 1 ${currency} = ${safeFormatNumber(price, 6)} ${vsCurrency}
+${priceChange24h !== undefined ? `• *24h Change:* ${priceChange24h >= 0 ? '🟢' : '🔴'} ${priceChange24h >= 0 ? '+' : ''}${safeFormatNumber(priceChange24h, 2)}%` : ''}
 
 *${EMOJIS.COIN} Coin Info:*
-• *Full Name:* ${coinData.name}
-• *Symbol:* ${coinData.symbol.toUpperCase()}
+• *Full Name:* ${escapeMarkdownV2(coinData.name)}
+• *Symbol:* ${escapeMarkdownV2(coinData.symbol.toUpperCase())}
 
 ${EMOJIS.REFRESH} *Live data from CoinGecko*`;
 
@@ -213,6 +235,9 @@ ${EMOJIS.REFRESH} *Live data from CoinGecko*`;
     }
 
   } catch (error) {
+    if (error.message.includes('⚠️ CoinGecko API rate limit exceeded') || error.message.includes('rate limit')) {
+      throw new Error('⚠️ CoinGecko API rate limit exceeded. Please try again in a minute.');
+    }
     throw new Error(`Standard rate error: ${error.message}`);
   }
 }
@@ -275,7 +300,17 @@ ${validation.errors.map(err => `• ${err}`).join('\n')}`;
       
       let errorMessage = `${EMOJIS.WARNING} *Conversion failed*
 
-${apiError.message}
+${escapeMarkdownV2(apiError.message)}`;
+
+      if (apiError.message.includes('⚠️ CoinGecko API rate limit exceeded') || apiError.message.includes('rate limit')) {
+        errorMessage = `${EMOJIS.WARNING} *Rate Limit Reached*
+
+⚠️ CoinGecko API rate limit exceeded\\. Please try again in a minute\\.
+
+${bold('Tip:')} Rate limits help keep the service fast and reliable for everyone\\.`;
+      }
+
+      errorMessage += `
 
 *${EMOJIS.CHART} Try:*
 • Check currency names/symbols
@@ -354,7 +389,7 @@ async function performConversion(env, chatId, amount, fromCurrency, toCurrency, 
   if (coinIdsToFetch.length > 0) {
     const prices = await getMultipleCoinPrices(env, coinIdsToFetch, ['usd']);
     if (!prices || Object.keys(prices).length === 0) {
-      throw new Error('Failed to get crypto prices');
+      throw new Error('⚠️ CoinGecko API rate limit exceeded. Please try again in a minute.');
     }
 
     if (fromPriceUSD === undefined) fromPriceUSD = prices[fromCoinId]?.usd;
@@ -372,13 +407,13 @@ async function performConversion(env, chatId, amount, fromCurrency, toCurrency, 
 
   const convertMessage = `${EMOJIS.EXCHANGE} *Currency Conversion*
 
-*${amount} ${fromCurrency.toUpperCase()}* ≈ *${formatNumber(result, 6)} ${toCurrency.toUpperCase()}*
+*${amount} ${fromCurrency.toUpperCase()}* ≈ *${safeFormatNumber(result, 6)} ${toCurrency.toUpperCase()}*
 
 *📊 Conversion Details:*
-• *Rate:* 1 ${fromCurrency.toUpperCase()} = ${formatNumber(conversionRate, 6)} ${toCurrency.toUpperCase()}
+• *Rate:* 1 ${fromCurrency.toUpperCase()} = ${safeFormatNumber(conversionRate, 6)} ${toCurrency.toUpperCase()}
 • *USD Values:*
-  \\- 1 ${fromCurrency.toUpperCase()} = $${formatNumber(fromPriceUSD, 6)}
-  \\- 1 ${toCurrency.toUpperCase()} = $${formatNumber(toPriceUSD, 6)}
+  \\- 1 ${fromCurrency.toUpperCase()} = $${safeFormatNumber(fromPriceUSD, 6)}
+  \\- 1 ${toCurrency.toUpperCase()} = $${safeFormatNumber(toPriceUSD, 6)}
 
 *${EMOJIS.CHART} Data Sources:*
 ${isFromP2P ? `• ${fromCurrency.toUpperCase()}: Binance P2P rates` : `• ${fromCurrency.toUpperCase()}: CoinGecko market data`}
