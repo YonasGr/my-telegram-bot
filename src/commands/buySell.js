@@ -2,10 +2,10 @@
  * Buy and Sell command handlers for P2P trading
  */
 
-import { sendMessage, sendLoadingMessage, updateLoadingMessage } from '../api/telegram.js';
+import { sendMessage, sendLoadingMessage, updateLoadingMessage, sendMessageSafe } from '../api/telegram.js';
 import { getP2PDataWithCache, getBestP2PRate } from '../api/binanceP2P.js';
 import { validateAmount, validateP2PRate } from '../utils/validators.js';
-import { safeFormatNumber, bold, escapeMarkdownV2, formatNumber } from '../utils/formatters.js';
+import { safeFormatNumber, bold, escapeMarkdownV2, formatNumber, safe } from '../utils/formatters.js';
 import { EMOJIS } from '../config/constants.js';
 
 /**
@@ -40,13 +40,13 @@ ${bold('💡 Notes:')}
 • Default fiat: ETB
 • Uses live Binance P2P rates`;
 
-      await sendMessage(env, chatId, helpMessage, 'MarkdownV2');
+      await sendMessageSafe(env, chatId, helpMessage);
       return;
     }
 
     const amountValidation = validateAmount(amount);
     if (!amountValidation.isValid) {
-      await sendMessage(env, chatId, `${EMOJIS.ERROR} ${escapeMarkdownV2(amountValidation.error)}`, 'MarkdownV2');
+      await sendMessageSafe(env, chatId, `${EMOJIS.ERROR} ${safe.any(amountValidation.error)}`);
       return;
     }
 
@@ -60,7 +60,7 @@ ${rateValidation.errors.map(err => `• ${err}`).join('\n')}
 • *Assets:* USDT, BTC, ETH, BNB, BUSD  
 • *Fiats:* ETB, USD, EUR, GBP, NGN, KES, GHS`;
 
-      await sendMessage(env, chatId, errorMessage, 'MarkdownV2');
+      await sendMessageSafe(env, chatId, errorMessage);
       return;
     }
 
@@ -85,7 +85,7 @@ No active offers to buy *${asset}* with *${fiat}* right now\\.
         if (loadingMsg?.result?.message_id) {
           await updateLoadingMessage(env, chatId, loadingMsg.result.message_id, noDataMessage, 'MarkdownV2');
         } else {
-          await sendMessage(env, chatId, noDataMessage, 'MarkdownV2');
+          await sendMessageSafe(env, chatId, noDataMessage);
         }
         return;
       }
@@ -111,10 +111,10 @@ No active offers to buy *${asset}* with *${fiat}* right now\\.
 • *Average rate:* ${safeFormatNumber(averageCost, 2)} ${fiat} \\(${safeFormatNumber(averageRate, 2)} per ${asset}\\)
 
 *🏆 Best Offer:*
-👤 *Trader:* ${escapeMarkdownV2(bestOffer.advertiser.nickName)}
+👤 *Trader:* ${safe.any(bestOffer.advertiser.nickName)}
 📊 *Available:* ${safeFormatNumber(bestOffer.adv.surplusAmount)} ${asset}
 📈 *Limits:* ${safeFormatNumber(bestOffer.adv.minSingleTransAmount)} \\- ${safeFormatNumber(bestOffer.adv.maxSingleTransAmount)} ${fiat}
-⭐ *Orders:* ${escapeMarkdownV2(bestOffer.advertiser.monthOrderCount.toString())} \\(${safeFormatNumber(bestOffer.advertiser.monthFinishRate * 100, 1)}% success\\)`;
+⭐ *Orders:* ${safe.any(bestOffer.advertiser.monthOrderCount.toString())} \\(${safeFormatNumber(bestOffer.advertiser.monthFinishRate * 100, 1)}% success\\)`;
 
       // Add payment methods if available
       if (bestOffer.adv.tradeMethods?.length > 0) {
@@ -132,7 +132,7 @@ ${EMOJIS.REFRESH} *Live data from Binance P2P*`;
       if (loadingMsg?.result?.message_id) {
         await updateLoadingMessage(env, chatId, loadingMsg.result.message_id, finalMessage, 'MarkdownV2');
       } else {
-        await sendMessage(env, chatId, finalMessage, 'MarkdownV2');
+        await sendMessageSafe(env, chatId, finalMessage);
       }
 
     } catch (apiError) {
@@ -140,7 +140,7 @@ ${EMOJIS.REFRESH} *Live data from Binance P2P*`;
       
       let errorMessage = `${EMOJIS.WARNING} *Could not fetch buying rates*
 
-${escapeMarkdownV2(apiError.message)}`;
+${safe.any(apiError.message)}`;
 
       if (apiError.message.includes('rate limit')) {
         errorMessage = `${EMOJIS.WARNING} *Service Rate Limited*
@@ -163,13 +163,13 @@ ${bold('Rate limits help:')}
       if (loadingMsg?.result?.message_id) {
         await updateLoadingMessage(env, chatId, loadingMsg.result.message_id, errorMessage, 'MarkdownV2');
       } else {
-        await sendMessage(env, chatId, errorMessage, 'MarkdownV2');
+        await sendMessageSafe(env, chatId, errorMessage);
       }
     }
 
   } catch (error) {
     console.error("Buy command error:", error);
-    await sendMessage(env, chatId, `${EMOJIS.ERROR} Error processing buy request: ${escapeMarkdownV2(error.message)}`, 'MarkdownV2');
+    await sendMessageSafe(env, chatId, `${EMOJIS.ERROR} Error processing buy request: ${safe.any(error.message)}`);
   }
 }
 
@@ -205,13 +205,13 @@ export async function handleSell(env, chatId, args) {
 • Default fiat: ETB
 • Uses live Binance P2P rates`;
 
-      await sendMessage(env, chatId, helpMessage, 'MarkdownV2');
+      await sendMessageSafe(env, chatId, helpMessage);
       return;
     }
 
     const amountValidation = validateAmount(amount);
     if (!amountValidation.isValid) {
-      await sendMessage(env, chatId, `${EMOJIS.ERROR} ${escapeMarkdownV2(amountValidation.error)}`, 'MarkdownV2');
+      await sendMessageSafe(env, chatId, `${EMOJIS.ERROR} ${safe.any(amountValidation.error)}`);
       return;
     }
 
@@ -225,7 +225,7 @@ ${rateValidation.errors.map(err => `• ${err}`).join('\n')}
 • *Assets:* USDT, BTC, ETH, BNB, BUSD
 • *Fiats:* ETB, USD, EUR, GBP, NGN, KES, GHS`;
 
-      await sendMessage(env, chatId, errorMessage, 'MarkdownV2');
+      await sendMessageSafe(env, chatId, errorMessage);
       return;
     }
 
@@ -250,7 +250,7 @@ No active offers to sell *${asset}* for *${fiat}* right now\\.
         if (loadingMsg?.result?.message_id) {
           await updateLoadingMessage(env, chatId, loadingMsg.result.message_id, noDataMessage, 'MarkdownV2');
         } else {
-          await sendMessage(env, chatId, noDataMessage, 'MarkdownV2');
+          await sendMessageSafe(env, chatId, noDataMessage);
         }
         return;
       }
@@ -276,10 +276,10 @@ No active offers to sell *${asset}* for *${fiat}* right now\\.
 • *Average rate:* ${safeFormatNumber(averageEarnings, 2)} ${fiat} \\(${safeFormatNumber(averageRate, 2)} per ${asset}\\)
 
 *🏆 Best Offer:*
-👤 *Trader:* ${escapeMarkdownV2(bestOffer.advertiser.nickName)}
+👤 *Trader:* ${safe.any(bestOffer.advertiser.nickName)}
 📊 *Wants:* ${safeFormatNumber(bestOffer.adv.surplusAmount)} ${asset}
 📈 *Limits:* ${safeFormatNumber(bestOffer.adv.minSingleTransAmount)} \\- ${safeFormatNumber(bestOffer.adv.maxSingleTransAmount)} ${fiat}
-⭐ *Orders:* ${escapeMarkdownV2(bestOffer.advertiser.monthOrderCount.toString())} \\(${safeFormatNumber(bestOffer.advertiser.monthFinishRate * 100, 1)}% success\\)`;
+⭐ *Orders:* ${safe.any(bestOffer.advertiser.monthOrderCount.toString())} \\(${safeFormatNumber(bestOffer.advertiser.monthFinishRate * 100, 1)}% success\\)`;
 
       // Add payment methods if available
       if (bestOffer.adv.tradeMethods?.length > 0) {
@@ -297,7 +297,7 @@ ${EMOJIS.REFRESH} *Live data from Binance P2P*`;
       if (loadingMsg?.result?.message_id) {
         await updateLoadingMessage(env, chatId, loadingMsg.result.message_id, finalMessage, 'MarkdownV2');
       } else {
-        await sendMessage(env, chatId, finalMessage, 'MarkdownV2');
+        await sendMessageSafe(env, chatId, finalMessage);
       }
 
     } catch (apiError) {
@@ -305,7 +305,7 @@ ${EMOJIS.REFRESH} *Live data from Binance P2P*`;
       
       let errorMessage = `${EMOJIS.WARNING} *Could not fetch selling rates*
 
-${escapeMarkdownV2(apiError.message)}`;
+${safe.any(apiError.message)}`;
 
       if (apiError.message.includes('rate limit')) {
         errorMessage = `${EMOJIS.WARNING} *Service Rate Limited*
@@ -328,12 +328,12 @@ ${bold('Rate limits help:')}
       if (loadingMsg?.result?.message_id) {
         await updateLoadingMessage(env, chatId, loadingMsg.result.message_id, errorMessage, 'MarkdownV2');
       } else {
-        await sendMessage(env, chatId, errorMessage, 'MarkdownV2');
+        await sendMessageSafe(env, chatId, errorMessage);
       }
     }
 
   } catch (error) {
     console.error("Sell command error:", error);
-    await sendMessage(env, chatId, `${EMOJIS.ERROR} Error processing sell request: ${escapeMarkdownV2(error.message)}`, 'MarkdownV2');
+    await sendMessageSafe(env, chatId, `${EMOJIS.ERROR} Error processing sell request: ${safe.any(error.message)}`);
   }
 }

@@ -230,22 +230,33 @@ export function chunkMessage(message, maxLength = 4096) {
         currentChunk = '';
       }
       
-      // Split long line by spaces to avoid breaking words
+      // Split long line by words to avoid breaking words
       const words = line.split(' ');
       let linePart = '';
       
       for (const word of words) {
-        if ((linePart + ' ' + word).length > maxLength) {
+        const testLine = linePart ? `${linePart} ${word}` : word;
+        
+        if (testLine.length > maxLength) {
           if (linePart) {
-            chunks.push(linePart.trim());
+            // Add current line part as a chunk
+            chunks.push(linePart);
             linePart = word;
           } else {
             // Word itself is too long, force split
-            chunks.push(word.substring(0, maxLength - 3) + '...');
-            linePart = '';
+            if (word.length > maxLength) {
+              let remaining = word;
+              while (remaining.length > maxLength) {
+                chunks.push(remaining.substring(0, maxLength - 3) + '...');
+                remaining = remaining.substring(maxLength - 3);
+              }
+              linePart = remaining;
+            } else {
+              linePart = word;
+            }
           }
         } else {
-          linePart = linePart ? `${linePart} ${word}` : word;
+          linePart = testLine;
         }
       }
       
@@ -273,7 +284,13 @@ export function chunkMessage(message, maxLength = 4096) {
     chunks.push(currentChunk.trim());
   }
   
-  return chunks.length > 0 ? chunks : [''];
+  // If no chunks were created (shouldn't happen), return the original truncated
+  if (chunks.length === 0) {
+    const truncated = message.substring(0, maxLength - 3) + '...';
+    chunks.push(truncated);
+  }
+  
+  return chunks;
 }
 
 /**

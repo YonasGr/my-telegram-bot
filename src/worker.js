@@ -7,9 +7,9 @@
 
 // Import utilities and configuration
 import { checkRateLimit } from './cache/rateLimiting.js';
-import { sendMessage, answerCallbackQuery } from './api/telegram.js';
+import { sendMessage, answerCallbackQuery, sendMessageSafe } from './api/telegram.js';
 import { sanitizeInput } from './utils/validators.js';
-import { bold } from './utils/formatters.js';
+import { bold, safe } from './utils/formatters.js';
 import { EMOJIS, API_URLS } from './config/constants.js';
 
 // Import command handlers

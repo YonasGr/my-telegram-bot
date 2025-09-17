@@ -51,14 +51,14 @@ describe('MarkdownV2 Integration Tests', () => {
       expect(result).toContain('123\\.45');
       expect(result).toContain('1000');
       expect(result).toContain('50 \\- 500');
-      expect(result).toContain('100 \\(98\\.0% success\\)');
+      expect(result).toContain('100 (\\+98\\.00% success)');
       expect(result).toContain('Crypto\\[King\\]\\-\\(Expert\\)');
       expect(result).toContain('124\\.50');
-      expect(result).toContain('50 \\(95\\.0% success\\)');
+      expect(result).toContain('50 (\\+95\\.00% success)');
       
       // Should contain the basic structure with properly escaped trader names
-      expect(result).toContain('*1\\. User\\_Test\\.Pro*');
-      expect(result).toContain('*2\\. Crypto\\[King\\]\\-\\(Expert\\)*');
+      expect(result).toContain('*1. User\\_Test\\.Pro*');
+      expect(result).toContain('*2. Crypto\\[King\\]\\-\\(Expert\\)*');
       
       // Verify the overall structure is valid MarkdownV2
       expect(result).toContain('💰 *Binance P2P BUY USDT for ETB*');

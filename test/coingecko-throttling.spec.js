@@ -91,16 +91,11 @@ describe('CoinGecko Rate Limiting', () => {
         return { throttled: 'data' };
       };
       
-      const start = Date.now();
-      
-      // First request - should throttle
-      await getCoinGeckoWithCache(mockEnv, '/throttle-test', mockFetch, 60);
-      const time = Date.now() - start;
+      // First request - should work normally (uses cache if available)
+      const result = await getCoinGeckoWithCache(mockEnv, '/throttle-test', mockFetch, 60);
       
       expect(fetchCalled).toBe(true);
-      // Note: In real implementation, this would check throttling
-      // For testing, we verify the structure works
-      expect(time).toBeGreaterThan(0);
+      expect(result).toEqual({ throttled: 'data' });
     });
 
     it('should handle fetch errors properly', async () => {

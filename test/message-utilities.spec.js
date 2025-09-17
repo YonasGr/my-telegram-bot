@@ -19,9 +19,15 @@ describe('Message Utilities', () => {
       const chunks = chunkMessage(longMessage);
       
       expect(chunks.length).toBeGreaterThan(1);
+      
+      // Check that all chunks are within the limit
       chunks.forEach(chunk => {
         expect(chunk.length).toBeLessThanOrEqual(4096);
       });
+      
+      // Check that total content is preserved (accounting for ellipsis in force-split words)
+      const totalLength = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+      expect(totalLength).toBeGreaterThan(4500); // Should preserve most of the content
     });
 
     it('should preserve line breaks when chunking', () => {
