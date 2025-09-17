@@ -204,3 +204,83 @@ export async function advancedRateLimit(env, identifier, config = {}) {
     return { allowed: true, remaining: limit, resetTime: now + windowSeconds };
   }
 }
+
+/**
+ * Global throttling for CoinGecko API calls to ensure minimum 1.5s between requests
+ * @param {object} env - Cloudflare environment object
+ * @returns {Promise<void>}
+ */
+export async function throttleCoinGeckoRequest(env) {
+  try {
+    const THROTTLE_KEY = 'coingecko_global_throttle';
+    const MIN_DELAY = 1500; // 1.5 seconds minimum
+    
+    const lastRequestTime = await env.BOT_CACHE.get(THROTTLE_KEY);
+    const now = Date.now();
+    
+    if (lastRequestTime) {
+      const timeSinceLastRequest = now - parseInt(lastRequestTime);
+      const waitTime = Math.max(0, MIN_DELAY - timeSinceLastRequest);
+      
+      if (waitTime > 0) {
+        console.log(`CoinGecko throttling: waiting ${waitTime}ms`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+      }
+    }
+    
+    // Update last request time
+    await env.BOT_CACHE.put(THROTTLE_KEY, now.toString(), { expirationTtl: 10 });
+    
+  } catch (error) {
+    console.error('CoinGecko throttling error:', error);
+    // On error, still add minimum delay
+    await new Promise(resolve => setTimeout(resolve, 1500));
+  }
+}
+
+/**
+ * Enhanced cache wrapper specifically for CoinGecko with minimum cache times
+ * @param {object} env - Cloudflare environment object
+ * @param {string} endpoint - API endpoint for cache key
+ * @param {Function} fetchFunction - Function to fetch data if not cached
+ * @param {number} ttl - Time to live in seconds (minimum 60s enforced)
+ * @returns {Promise<any>} Cached or fresh data
+ */
+export async function getCoinGeckoWithCache(env, endpoint, fetchFunction, ttl = 60) {
+  try {
+    // Enforce minimum 60s cache as required
+    const safeTtl = Math.max(ttl, 60);
+    const cacheKey = `coingecko_${endpoint.replace(/[^a-zA-Z0-9]/g, '_')}`;
+    
+    // Try cache first
+    const cached = await env.BOT_CACHE.get(cacheKey);
+    if (cached) {
+      console.log(`CoinGecko cache hit: ${endpoint}`);
+      return JSON.parse(cached);
+    }
+
+    console.log(`CoinGecko cache miss: ${endpoint}, fetching with throttling`);
+    
+    // Apply global throttling before making request
+    await throttleCoinGeckoRequest(env);
+    
+    // Fetch fresh data
+    const data = await fetchFunction();
+    
+    // Store in cache
+    await env.BOT_CACHE.put(cacheKey, JSON.stringify(data), { expirationTtl: safeTtl });
+    
+    return data;
+  } catch (error) {
+    console.error(`CoinGecko cache error for ${endpoint}:`, error);
+    
+    // On cache error, still try to throttle and fetch
+    try {
+      await throttleCoinGeckoRequest(env);
+      return await fetchFunction();
+    } catch (fetchError) {
+      console.error(`CoinGecko fetch error for ${endpoint}:`, fetchError);
+      throw fetchError;
+    }
+  }
+}
