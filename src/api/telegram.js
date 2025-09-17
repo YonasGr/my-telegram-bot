@@ -161,15 +161,15 @@ export async function editMessage(env, chatId, messageId, text, parseMode = 'Mar
  * @param {object} env - Cloudflare environment
  * @param {string} callbackQueryId - Callback query ID
  * @param {string} text - Answer text
- * @param {boolean} showAlert - Show alert popup
- * @returns {Promise<object|null>} Telegram API response
+ * @param {boolean} showAlert - Show as alert instead of notification
+ * @returns {Promise<boolean>} Success status
  */
 export async function answerCallbackQuery(env, callbackQueryId, text = '', showAlert = false) {
   try {
     const payload = {
       callback_query_id: callbackQueryId,
       text: text,
-      show_alert: showAlert,
+      show_alert: showAlert
     };
 
     const response = await fetch(`${API_URLS.TELEGRAM_BOT}${env.TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
@@ -178,99 +178,11 @@ export async function answerCallbackQuery(env, callbackQueryId, text = '', showA
       body: JSON.stringify(payload)
     });
 
-    if (!response.ok) {
-      console.error(`Telegram answerCallbackQuery error ${response.status}`);
-      return null;
-    }
-
-    return await response.json();
+    return response.ok;
 
   } catch (error) {
     console.error('Error answering callback query:', error);
-    return null;
-  }
-}
-
-/**
- * Safely sends a message with automatic chunking and MarkdownV2 escaping
- * @param {object} env - Cloudflare environment
- * @param {string|number} chatId - Chat ID
- * @param {string} text - Message text (will be chunked if too long)
- * @param {string} parseMode - Parse mode (default: 'MarkdownV2')
- * @param {object} replyMarkup - Inline keyboard markup (only applied to last chunk)
- * @returns {Promise<object[]>} Array of Telegram API responses
- */
-export async function sendMessageSafe(env, chatId, text, parseMode = 'MarkdownV2', replyMarkup = null) {
-  try {
-    // Import chunking function
-    const { chunkMessage } = await import('../utils/formatters.js');
-    
-    // Split message into chunks
-    const chunks = chunkMessage(text);
-    const responses = [];
-    
-    for (let i = 0; i < chunks.length; i++) {
-      const chunk = chunks[i];
-      const isLastChunk = i === chunks.length - 1;
-      
-      // Only apply reply markup to the last chunk
-      const currentReplyMarkup = isLastChunk ? replyMarkup : null;
-      
-      const response = await sendMessage(env, chatId, chunk, parseMode, currentReplyMarkup);
-      responses.push(response);
-      
-      // Small delay between chunks to avoid rate limiting
-      if (!isLastChunk) {
-        await new Promise(resolve => setTimeout(resolve, 100));
-      }
-    }
-    
-    return responses;
-  } catch (error) {
-    console.error('Error in sendMessageSafe:', error);
-    // Fallback to regular sendMessage
-    return [await sendMessage(env, chatId, text, parseMode, replyMarkup)];
-  }
-}
-
-/**
- * Creates and sends a safe message with template and values
- * @param {object} env - Cloudflare environment
- * @param {string|number} chatId - Chat ID
- * @param {string} template - Message template with placeholders
- * @param {object} values - Values to substitute in template
- * @param {object} replyMarkup - Inline keyboard markup
- * @returns {Promise<object[]>} Array of Telegram API responses
- */
-export async function sendTemplateSafe(env, chatId, template, values = {}, replyMarkup = null) {
-  try {
-    const { createSafeMessageChunks } = await import('../utils/formatters.js');
-    
-    // Create safe message chunks with proper escaping
-    const chunks = createSafeMessageChunks(template, values);
-    const responses = [];
-    
-    for (let i = 0; i < chunks.length; i++) {
-      const chunk = chunks[i];
-      const isLastChunk = i === chunks.length - 1;
-      
-      // Only apply reply markup to the last chunk
-      const currentReplyMarkup = isLastChunk ? replyMarkup : null;
-      
-      const response = await sendMessage(env, chatId, chunk, 'MarkdownV2', currentReplyMarkup);
-      responses.push(response);
-      
-      // Small delay between chunks
-      if (!isLastChunk) {
-        await new Promise(resolve => setTimeout(resolve, 100));
-      }
-    }
-    
-    return responses;
-  } catch (error) {
-    console.error('Error in sendTemplateSafe:', error);
-    // Fallback to basic safe message
-    return await sendMessageSafe(env, chatId, template);
+    return false;
   }
 }
 

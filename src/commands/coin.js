@@ -2,7 +2,7 @@
  * Coin information command handler with enhanced features
  */
 
-import { sendMessage, sendPhoto, sendLoadingMessage, updateLoadingMessage, createTimeframeKeyboard, sendMessageSafe } from '../api/telegram.js';
+import { sendMessage, sendPhoto, sendLoadingMessage, updateLoadingMessage, createTimeframeKeyboard } from '../api/telegram.js';
 import { searchCoinSymbol, getCoinData, getCoinMarketChart } from '../api/coinGecko.js';
 import { generateChartImageUrl } from '../api/charts.js';
 import { validateCoinSymbol } from '../utils/validators.js';
@@ -11,8 +11,7 @@ import {
   safeFormatLargeNumber, 
   safeFormatPercentageChange,
   escapeMarkdownV2,
-  bold,
-  safe
+  bold 
 } from '../utils/formatters.js';
 import { EMOJIS, CHART_CONFIG } from '../config/constants.js';
 
@@ -49,7 +48,7 @@ export async function handleCoin(env, chatId, args) {
 
 ${validation.error}`;
 
-      await sendMessageSafe(env, chatId, helpMessage);
+      await sendMessage(env, chatId, helpMessage, 'MarkdownV2');
       return;
     }
 
@@ -74,7 +73,7 @@ ${bold(`${EMOJIS.CHART} Suggestions:`)}
         if (loadingMsg?.result?.message_id) {
           await updateLoadingMessage(env, chatId, loadingMsg.result.message_id, notFoundMessage, 'MarkdownV2');
         } else {
-          await sendMessageSafe(env, chatId, notFoundMessage);
+          await sendMessage(env, chatId, notFoundMessage, 'MarkdownV2');
         }
         return;
       }
@@ -107,35 +106,32 @@ ${bold(`${EMOJIS.CHART} Suggestions:`)}
       );
 
       // Create comprehensive coin information message
-      // Prepare comprehensive coin information using safe formatters
-      const coinName = safe.coinName(detailedData.name, coinData.symbol.toUpperCase());
-      
-      let coinMessage = `${EMOJIS.COIN} ${bold(coinName)}
+      let coinMessage = `${EMOJIS.COIN} ${bold(`${detailedData.name} (${coinData.symbol.toUpperCase()})`)}
 
 ${bold('💰 Price Information:')}
-• ${bold('Current Price:')} ${safe.price(currentPrice, 'USD')}
-• ${bold('24h Change:')} ${safe.percentage(priceChange24h)}
-${marketCapRank ? `• ${bold('Market Cap Rank:')} #${safe.any(marketCapRank)}` : ''}
+• ${bold('Current Price:')} $${safeFormatNumber(currentPrice, currentPrice > 1 ? 2 : 6)}
+• ${bold('24h Change:')} ${safeFormatPercentageChange(priceChange24h)}
+${marketCapRank ? `• ${bold('Market Cap Rank:')} #${escapeMarkdownV2(marketCapRank.toString())}` : ''}
 
 ${bold('📊 Market Statistics:')}
-• ${bold('Market Cap:')} ${safe.price(marketCap, 'USD')}
-• ${bold('24h Volume:')} ${safe.price(volume24h, 'USD')}
-${circulatingSupply ? `• ${bold('Circulating Supply:')} ${safe.any(safeFormatLargeNumber(circulatingSupply))} ${safe.any(coinData.symbol.toUpperCase())}` : ''}
+• ${bold('Market Cap:')} $${safeFormatLargeNumber(marketCap)}
+• ${bold('24h Volume:')} $${safeFormatLargeNumber(volume24h)}
+${circulatingSupply ? `• ${bold('Circulating Supply:')} ${safeFormatLargeNumber(circulatingSupply)} ${escapeMarkdownV2(coinData.symbol.toUpperCase())}` : ''}
 
 ${bold('📈 Additional Data:')}`;
 
       // Add additional price data if available
       if (marketData.high_24h && marketData.low_24h) {
-        coinMessage += `\n• ${bold('24h High:')} ${safe.price(marketData.high_24h.usd, 'USD')}`;
-        coinMessage += `\n• ${bold('24h Low:')} ${safe.price(marketData.low_24h.usd, 'USD')}`;
+        coinMessage += `\n• ${bold('24h High:')} $${safeFormatNumber(marketData.high_24h.usd, currentPrice > 1 ? 2 : 6)}`;
+        coinMessage += `\n• ${bold('24h Low:')} $${safeFormatNumber(marketData.low_24h.usd, currentPrice > 1 ? 2 : 6)}`;
       }
 
       if (marketData.price_change_percentage_7d) {
-        coinMessage += `\n• ${bold('7d Change:')} ${safe.percentage(marketData.price_change_percentage_7d)}`;
+        coinMessage += `\n• ${bold('7d Change:')} ${safeFormatPercentageChange(marketData.price_change_percentage_7d)}`;
       }
 
       if (marketData.price_change_percentage_30d) {
-        coinMessage += `\n• ${bold('30d Change:')} ${safe.percentage(marketData.price_change_percentage_30d)}`;
+        coinMessage += `\n• ${bold('30d Change:')} ${safeFormatPercentageChange(marketData.price_change_percentage_30d)}`;
       }
 
       // Add links section
@@ -174,33 +170,33 @@ ${EMOJIS.REFRESH} ${bold('Live data from CoinGecko')}`;
       let errorMessage = `${EMOJIS.WARNING} ${bold('Could not fetch coin data')}`;
 
       if (apiError.message.includes('⚠️ CoinGecko API rate limit exceeded')) {
-        errorMessage += `\n\n${safe.any(apiError.message)}\n\n${bold('Please wait about a minute before trying again.')}\n\n${EMOJIS.LOADING} ${bold('Rate limiting helps keep the service available for everyone.')}`;
+        errorMessage += `\n\n${apiError.message}\n\n${bold('Please wait about a minute before trying again\\.')}\n\n${EMOJIS.LOADING} ${bold('Rate limiting helps keep the service available for everyone\\.')}`;
       } else if (apiError.message.includes('rate limit')) {
-        errorMessage += `\n\n⚠️ CoinGecko API rate limit exceeded. Please try again in a minute.`;
+        errorMessage += `\n\n⚠️ CoinGecko API rate limit exceeded\\. Please try again in a minute\\.`;
       } else if (apiError.message.includes('not found')) {
-        errorMessage += `\n\n${EMOJIS.ERROR} ${bold('Cryptocurrency not found!')} Please check the name/symbol and try again.`;
+        errorMessage += `\n\n${EMOJIS.ERROR} ${bold('Cryptocurrency not found!')} Please check the name/symbol and try again\\.`;
       } else if (apiError.message.includes('Network error')) {
-        errorMessage += `\n\n${EMOJIS.ERROR} ${bold('Network error!')} Could not connect to data service.`;
+        errorMessage += `\n\n${EMOJIS.ERROR} ${bold('Network error!')} Could not connect to data service\\.`;
       } else {
-        errorMessage += `\n\n${EMOJIS.ERROR} ${safe.any(apiError.message)}`;
+        errorMessage += `\n\n${EMOJIS.ERROR} ${escapeMarkdownV2(apiError.message)}`;
       }
 
       errorMessage += `\n\n${bold(`${EMOJIS.CHART} Try:`)}
 • Wait a moment and retry
-• Use popular coins: ${safe.any('/coin bitcoin')}
-• Check spelling: ${safe.any('/coin ethereum')}
-• Use symbols: ${safe.any('/coin btc')}`;
+• Use popular coins: \`/coin bitcoin\`
+• Check spelling: \`/coin ethereum\`
+• Use symbols: \`/coin btc\``;
 
       if (loadingMsg?.result?.message_id) {
         await updateLoadingMessage(env, chatId, loadingMsg.result.message_id, errorMessage, 'MarkdownV2');
       } else {
-        await sendMessageSafe(env, chatId, errorMessage);
+        await sendMessage(env, chatId, errorMessage, 'MarkdownV2');
       }
     }
 
   } catch (error) {
     console.error("Coin command error:", error);
-    await sendMessageSafe(env, chatId, `${EMOJIS.ERROR} Error processing coin request: ${safe.any(error.message)}`);
+    await sendMessage(env, chatId, `${EMOJIS.ERROR} Error processing coin request: ${escapeMarkdownV2(error.message)}`, 'MarkdownV2');
   }
 }
 

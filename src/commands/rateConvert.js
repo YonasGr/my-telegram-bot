@@ -2,11 +2,11 @@
  * Rate and Convert command handlers
  */
 
-import { sendMessage, sendLoadingMessage, updateLoadingMessage, sendMessageSafe } from '../api/telegram.js';
+import { sendMessage, sendLoadingMessage, updateLoadingMessage } from '../api/telegram.js';
 import { searchCoinSymbol, getMultipleCoinPrices } from '../api/coinGecko.js';
 import { getBestP2PRate } from '../api/binanceP2P.js';
 import { validateAmount, validateCurrency, validateConversion } from '../utils/validators.js';
-import { safeFormatNumber, bold, escapeMarkdownV2, formatNumber, safe } from '../utils/formatters.js';
+import { safeFormatNumber, bold, escapeMarkdownV2, formatNumber } from '../utils/formatters.js';
 import { EMOJIS, SUPPORTED_FIATS } from '../config/constants.js';
 
 /**
@@ -40,13 +40,13 @@ ${bold('💡 Notes:')}
 • Other conversions use CoinGecko rates
 • Default target currency is USD`;
 
-      await sendMessageSafe(env, chatId, helpMessage);
+      await sendMessage(env, chatId, helpMessage, 'MarkdownV2');
       return;
     }
 
     const amountValidation = validateAmount(amount);
     if (!amountValidation.isValid) {
-      await sendMessageSafe(env, chatId, `${EMOJIS.ERROR} ${safe.any(amountValidation.error)}`);
+      await sendMessage(env, chatId, `${EMOJIS.ERROR} ${escapeMarkdownV2(amountValidation.error)}`, 'MarkdownV2');
       return;
     }
 
@@ -55,7 +55,7 @@ ${bold('💡 Notes:')}
 
     if (!currencyValidation.isValid || !vsCurrencyValidation.isValid) {
       const error = currencyValidation.error || vsCurrencyValidation.error;
-      await sendMessageSafe(env, chatId, `${EMOJIS.ERROR} ${error}`);
+      await sendMessage(env, chatId, `${EMOJIS.ERROR} ${error}`, 'MarkdownV2');
       return;
     }
 
@@ -78,7 +78,7 @@ ${bold('💡 Notes:')}
       
       let errorMessage = `${EMOJIS.WARNING} *Could not fetch conversion rate*
 
-${safe.any(apiError.message)}`;
+${escapeMarkdownV2(apiError.message)}`;
 
       if (apiError.message.includes('⚠️ CoinGecko API rate limit exceeded')) {
         errorMessage = `${EMOJIS.WARNING} *Rate Limit Reached*
@@ -111,13 +111,13 @@ ${bold('What you can do:')}
       if (loadingMsg?.result?.message_id) {
         await updateLoadingMessage(env, chatId, loadingMsg.result.message_id, errorMessage, 'MarkdownV2');
       } else {
-        await sendMessageSafe(env, chatId, errorMessage);
+        await sendMessage(env, chatId, errorMessage, 'MarkdownV2');
       }
     }
 
   } catch (error) {
     console.error("Rate command error:", error);
-    await sendMessageSafe(env, chatId, `${EMOJIS.ERROR} Error processing request: ${safe.any(error.message)}`);
+    await sendMessage(env, chatId, `${EMOJIS.ERROR} Error processing request: ${escapeMarkdownV2(error.message)}`, 'MarkdownV2');
   }
 }
 
@@ -149,7 +149,7 @@ Could not find ${currency}/${vsCurrency} P2P rates right now\\.
       if (loadingMsg?.result?.message_id) {
         await updateLoadingMessage(env, chatId, loadingMsg.result.message_id, noRateMessage, 'MarkdownV2');
       } else {
-        await sendMessageSafe(env, chatId, noRateMessage);
+        await sendMessage(env, chatId, noRateMessage, 'MarkdownV2');
       }
       return;
     }
@@ -162,19 +162,19 @@ Could not find ${currency}/${vsCurrency} P2P rates right now\\.
 
 *📊 P2P Rate Details:*
 • *Current Rate:* 1 ${currency} = ${safeFormatNumber(p2pRate.price, 2)} ${vsCurrency}
-• *Best Trader:* ${safe.any(p2pRate.trader.name)}
+• *Best Trader:* ${escapeMarkdownV2(p2pRate.trader.name)}
 • *Available:* ${safeFormatNumber(p2pRate.availableAmount)} ${currency}
 • *Trade Limits:* ${safeFormatNumber(p2pRate.minAmount)} \\- ${safeFormatNumber(p2pRate.maxAmount)} ${vsCurrency}
-• *Success Rate:* ${safeFormatNumber(p2pRate.trader.successRate, 1)}% \\(${safe.any(p2pRate.trader.orders.toString())} orders\\)
+• *Success Rate:* ${safeFormatNumber(p2pRate.trader.successRate, 1)}% \\(${escapeMarkdownV2(p2pRate.trader.orders.toString())} orders\\)
 
-${p2pRate.paymentMethods.length > 0 ? `*🏦 Payment Methods:* ${safe.any(p2pRate.paymentMethods.join(", "))}` : ''}
+${p2pRate.paymentMethods.length > 0 ? `*🏦 Payment Methods:* ${escapeMarkdownV2(p2pRate.paymentMethods.join(", "))}` : ''}
 
 ${EMOJIS.REFRESH} *Live P2P data from Binance*`;
 
     if (loadingMsg?.result?.message_id) {
       await updateLoadingMessage(env, chatId, loadingMsg.result.message_id, rateMessage, 'MarkdownV2');
     } else {
-      await sendMessageSafe(env, chatId, rateMessage);
+      await sendMessage(env, chatId, rateMessage, 'MarkdownV2');
     }
 
   } catch (error) {
@@ -223,15 +223,15 @@ async function handleStandardRate(env, chatId, amount, currency, vsCurrency, loa
 ${priceChange24h !== undefined ? `• *24h Change:* ${priceChange24h >= 0 ? '🟢' : '🔴'} ${priceChange24h >= 0 ? '+' : ''}${safeFormatNumber(priceChange24h, 2)}%` : ''}
 
 *${EMOJIS.COIN} Coin Info:*
-• *Full Name:* ${safe.any(coinData.name)}
-• *Symbol:* ${safe.any(coinData.symbol.toUpperCase())}
+• *Full Name:* ${escapeMarkdownV2(coinData.name)}
+• *Symbol:* ${escapeMarkdownV2(coinData.symbol.toUpperCase())}
 
 ${EMOJIS.REFRESH} *Live data from CoinGecko*`;
 
     if (loadingMsg?.result?.message_id) {
       await updateLoadingMessage(env, chatId, loadingMsg.result.message_id, rateMessage, 'MarkdownV2');
     } else {
-      await sendMessageSafe(env, chatId, rateMessage);
+      await sendMessage(env, chatId, rateMessage, 'MarkdownV2');
     }
 
   } catch (error) {
@@ -274,7 +274,7 @@ export async function handleConvert(env, chatId, args) {
 • Supports crypto ↔ crypto and crypto ↔ fiat
 • Live market rates from CoinGecko & Binance`;
 
-      await sendMessageSafe(env, chatId, helpMessage);
+      await sendMessage(env, chatId, helpMessage, 'MarkdownV2');
       return;
     }
 
@@ -284,7 +284,7 @@ export async function handleConvert(env, chatId, args) {
 
 ${validation.errors.map(err => `• ${err}`).join('\n')}`;
 
-      await sendMessageSafe(env, chatId, errorMessage);
+      await sendMessage(env, chatId, errorMessage, 'MarkdownV2');
       return;
     }
 
@@ -300,7 +300,7 @@ ${validation.errors.map(err => `• ${err}`).join('\n')}`;
       
       let errorMessage = `${EMOJIS.WARNING} *Conversion failed*
 
-${safe.any(apiError.message)}`;
+${escapeMarkdownV2(apiError.message)}`;
 
       if (apiError.message.includes('⚠️ CoinGecko API rate limit exceeded') || apiError.message.includes('rate limit')) {
         errorMessage = `${EMOJIS.WARNING} *Rate Limit Reached*
@@ -321,13 +321,13 @@ ${bold('Tip:')} Rate limits help keep the service fast and reliable for everyone
       if (loadingMsg?.result?.message_id) {
         await updateLoadingMessage(env, chatId, loadingMsg.result.message_id, errorMessage, 'MarkdownV2');
       } else {
-        await sendMessageSafe(env, chatId, errorMessage);
+        await sendMessage(env, chatId, errorMessage, 'MarkdownV2');
       }
     }
 
   } catch (error) {
     console.error("Convert command error:", error);
-    await sendMessageSafe(env, chatId, `${EMOJIS.ERROR} Error processing request: ${safe.any(error.message)}`);
+    await sendMessage(env, chatId, `${EMOJIS.ERROR} Error processing request: ${escapeMarkdownV2(error.message)}`, 'MarkdownV2');
   }
 }
 
@@ -424,6 +424,6 @@ ${EMOJIS.REFRESH} *Live data from multiple sources*`;
   if (loadingMsg?.result?.message_id) {
     await updateLoadingMessage(env, chatId, loadingMsg.result.message_id, convertMessage, 'MarkdownV2');
   } else {
-    await sendMessageSafe(env, chatId, convertMessage);
+    await sendMessage(env, chatId, convertMessage, 'MarkdownV2');
   }
 }

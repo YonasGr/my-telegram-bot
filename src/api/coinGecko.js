@@ -3,15 +3,19 @@
  */
 
 import { API_URLS, CACHE_TTL, RATE_LIMIT } from '../config/constants.js';
-import { getCoinGeckoWithCache } from '../cache/rateLimiting.js';
+import { getWithCache } from '../cache/rateLimiting.js';
+import { delay } from '../utils/formatters.js';
 
 /**
- * Fetches data from CoinGecko API with proper throttling and error handling
+ * Fetches data from CoinGecko API with rate limiting
  * @param {string} endpoint - API endpoint path
  * @returns {Promise<object>} API response data
  */
 export async function fetchCoinGeckoData(endpoint) {
   try {
+    // Add delay to respect rate limits
+    await delay(RATE_LIMIT.COINGECKO_DELAY);
+
     console.log(`Fetching CoinGecko data: ${endpoint}`);
     
     const response = await fetch(`${API_URLS.COINGECKO}${endpoint}`, {
@@ -49,161 +53,139 @@ export async function fetchCoinGeckoData(endpoint) {
 }
 
 /**
- * Searches for a coin by symbol or name with enhanced caching
+ * Searches for a coin by symbol or name
  * @param {object} env - Cloudflare environment
  * @param {string} symbol - Coin symbol or name to search
  * @returns {Promise<object|null>} Coin data or null if not found
  */
 export async function searchCoinSymbol(env, symbol) {
-  try {
-    const endpoint = `/coins/list`;
+  const cacheKey = `coin_search_${symbol.toLowerCase()}`;
+  
+  return getWithCache(env, cacheKey, async () => {
+    const coinList = await fetchCoinGeckoData('/coins/list');
     
-    const coinList = await getCoinGeckoWithCache(env, endpoint, 
-      () => fetchCoinGeckoData(endpoint), 
-      CACHE_TTL.COIN_SEARCH
+    const searchTerm = symbol.toLowerCase();
+    const matches = coinList.filter(coin =>
+      coin.symbol.toLowerCase() === searchTerm ||
+      coin.id.toLowerCase() === searchTerm ||
+      coin.name.toLowerCase().includes(searchTerm)
     );
-    
-    if (!Array.isArray(coinList)) {
-      throw new Error('Invalid coin list response from CoinGecko');
-    }
 
-    const searchTerm = symbol.toLowerCase().trim();
-    
-    // Search by exact symbol match first
-    let match = coinList.find(coin => 
-      coin.symbol && coin.symbol.toLowerCase() === searchTerm
-    );
-    
-    // If no exact symbol match, search by name
-    if (!match) {
-      match = coinList.find(coin => 
-        coin.name && coin.name.toLowerCase().includes(searchTerm)
-      );
-    }
-    
-    // If still no match, try partial symbol match
-    if (!match) {
-      match = coinList.find(coin => 
-        coin.symbol && coin.symbol.toLowerCase().includes(searchTerm)
-      );
-    }
+    // Prioritize exact symbol matches
+    const exactSymbolMatch = matches.find(coin => coin.symbol.toLowerCase() === searchTerm);
+    if (exactSymbolMatch) return exactSymbolMatch;
 
-    console.log(`Coin search for "${symbol}":`, match ? `Found ${match.name} (${match.symbol})` : 'Not found');
-    return match || null;
+    // Then exact ID matches  
+    const exactIdMatch = matches.find(coin => coin.id.toLowerCase() === searchTerm);
+    if (exactIdMatch) return exactIdMatch;
 
-  } catch (error) {
-    console.error(`Error searching coin symbol "${symbol}":`, error);
-    throw error;
-  }
+    // Finally return first match or null
+    return matches.length > 0 ? matches[0] : null;
+  }, CACHE_TTL.COIN_SEARCH);
 }
 
 /**
- * Gets detailed coin data with enhanced caching
+ * Gets detailed coin data
  * @param {object} env - Cloudflare environment
  * @param {string} coinId - CoinGecko coin ID
  * @returns {Promise<object>} Detailed coin data
  */
 export async function getCoinData(env, coinId) {
-  const endpoint = `/coins/${coinId}?localization=false&tickers=false&market_data=true&community_data=false&developer_data=false&sparkline=false`;
+  const cacheKey = `coin_data_${coinId}`;
   
-  return getCoinGeckoWithCache(env, endpoint,
-    () => fetchCoinGeckoData(endpoint),
-    CACHE_TTL.COIN_DATA
-  );
+  return getWithCache(env, cacheKey, () => {
+    return fetchCoinGeckoData(
+      `/coins/${coinId}?localization=false&tickers=false&market_data=true&community_data=false&developer_data=false&sparkline=false`
+    );
+  }, CACHE_TTL.COIN_DATA);
 }
 
 /**
- * Gets coin market chart data with enhanced caching
+ * Gets coin market chart data
  * @param {object} env - Cloudflare environment
  * @param {string} coinId - CoinGecko coin ID
- * @param {string} vsCurrency - Target currency
- * @param {number} days - Number of days of data
- * @returns {Promise<object>} Chart data
+ * @param {number} days - Number of days for chart data
+ * @returns {Promise<object>} Market chart data
  */
-export async function getCoinMarketChart(env, coinId, vsCurrency = 'usd', days = 7) {
-  const endpoint = `/coins/${coinId}/market_chart?vs_currency=${vsCurrency}&days=${days}`;
+export async function getCoinMarketChart(env, coinId, days = 7) {
+  const cacheKey = `coin_chart_${coinId}_${days}`;
   
-  return getCoinGeckoWithCache(env, endpoint,
-    () => fetchCoinGeckoData(endpoint),
-    CACHE_TTL.CHART_DATA
-  );
+  return getWithCache(env, cacheKey, () => {
+    return fetchCoinGeckoData(`/coins/${coinId}/market_chart?vs_currency=usd&days=${days}`);
+  }, CACHE_TTL.CHART_DATA);
 }
 
 /**
- * Gets simple price data for multiple coins with enhanced caching
+ * Gets simple price data for multiple coins
  * @param {object} env - Cloudflare environment
  * @param {string[]} coinIds - Array of coin IDs
  * @param {string[]} vsCurrencies - Array of currencies to get prices in
  * @returns {Promise<object>} Price data
  */
-export async function getMultipleCoinPrices(env, coinIds, vsCurrencies = ['usd'], includeChange = true) {
-  const coinIdsStr = Array.isArray(coinIds) ? coinIds.join(',') : coinIds;
-  const vsCurrenciesStr = Array.isArray(vsCurrencies) ? vsCurrencies.join(',') : vsCurrencies;
-  const changeParam = includeChange ? '&include_24hr_change=true' : '';
+export async function getMultipleCoinPrices(env, coinIds, vsCurrencies) {
+  const coinIdString = coinIds.join(',');
+  const vsCurrencyString = vsCurrencies.join(',');
+  const cacheKey = `simple_prices_${coinIdString}_${vsCurrencyString}`;
   
-  const endpoint = `/simple/price?ids=${encodeURIComponent(coinIdsStr)}&vs_currencies=${vsCurrenciesStr}${changeParam}`;
-  
-  return getCoinGeckoWithCache(env, endpoint,
-    () => fetchCoinGeckoData(endpoint),
-    RATE_LIMIT.COINGECKO_CACHE_MIN // Use minimum required cache time
-  );
+  return getWithCache(env, cacheKey, async () => {
+    const endpoint = `/simple/price?ids=${coinIdString}&vs_currencies=${vsCurrencyString}&include_24hr_change=true`;
+    return await fetchCoinGeckoData(endpoint);
+  }, CACHE_TTL.SIMPLE_PRICES);
 }
 
 /**
- * Gets trending coins with enhanced caching
+ * Gets trending coins
  * @param {object} env - Cloudflare environment
  * @returns {Promise<object>} Trending coins data
  */
 export async function getTrendingCoins(env) {
-  const endpoint = '/search/trending';
+  const cacheKey = 'trending_coins';
   
-  return getCoinGeckoWithCache(env, endpoint,
-    () => fetchCoinGeckoData(endpoint),
-    1800 // 30 minutes cache for trending
-  );
+  return getWithCache(env, cacheKey, () => {
+    return fetchCoinGeckoData('/search/trending');
+  }, 1800); // 30 minutes cache for trending
 }
 
 /**
- * Gets global crypto market data with enhanced caching
+ * Gets global crypto market data
  * @param {object} env - Cloudflare environment
  * @returns {Promise<object>} Global market data
  */
 export async function getGlobalMarketData(env) {
-  const endpoint = '/global';
+  const cacheKey = 'global_market_data';
   
-  return getCoinGeckoWithCache(env, endpoint,
-    () => fetchCoinGeckoData(endpoint),
-    3600 // 1 hour cache for global data
-  );
+  return getWithCache(env, cacheKey, () => {
+    return fetchCoinGeckoData('/global');
+  }, 3600); // 1 hour cache for global data
 }
 
 /**
- * Searches coins by query string with enhanced caching
+ * Searches coins by query string
  * @param {object} env - Cloudflare environment
  * @param {string} query - Search query
  * @returns {Promise<object>} Search results
  */
 export async function searchCoins(env, query) {
-  const endpoint = `/search?query=${encodeURIComponent(query)}`;
+  const cacheKey = `coin_search_query_${query.toLowerCase()}`;
   
-  return getCoinGeckoWithCache(env, endpoint,
-    () => fetchCoinGeckoData(endpoint),
-    3600 // 1 hour cache for search results
-  );
+  return getWithCache(env, cacheKey, () => {
+    return fetchCoinGeckoData(`/search?query=${encodeURIComponent(query)}`);
+  }, 3600);
 }
 
 /**
- * Gets market data for top coins with enhanced caching
+ * Gets market data for top coins
  * @param {object} env - Cloudflare environment
  * @param {number} perPage - Number of coins per page
  * @param {number} page - Page number
  * @returns {Promise<object[]>} Market data for top coins
  */
 export async function getTopCoins(env, perPage = 10, page = 1) {
-  const endpoint = `/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=${perPage}&page=${page}&sparkline=false`;
+  const cacheKey = `top_coins_${perPage}_${page}`;
   
-  return getCoinGeckoWithCache(env, endpoint,
-    () => fetchCoinGeckoData(endpoint),
-    1800 // 30 minutes cache for top coins
-  );
+  return getWithCache(env, cacheKey, () => {
+    return fetchCoinGeckoData(
+      `/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=${perPage}&page=${page}&sparkline=false`
+    );
+  }, 1800); // 30 minutes cache
 }

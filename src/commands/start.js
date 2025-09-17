@@ -2,8 +2,8 @@
  * Start and Help command handlers
  */
 
-import { sendMessage, createQuickActionsKeyboard, sendMessageSafe } from '../api/telegram.js';
-import { bold, escapeMarkdownV2, safe } from '../utils/formatters.js';
+import { sendMessage, createQuickActionsKeyboard } from '../api/telegram.js';
+import { bold, escapeMarkdownV2 } from '../utils/formatters.js';
 import { EMOJIS, COMMANDS } from '../config/constants.js';
 
 /**
@@ -68,7 +68,7 @@ ${isHelp ? '❓' : '👨‍💻'} ${bold('Author:')} @x_Jonah
  * @returns {Promise<void>}
  */
 export async function handleUnknownCommand(env, chatId, command) {
-  const errorMessage = `${EMOJIS.ERROR} Unknown command: \`${safe.any(command)}\`
+  const errorMessage = `${EMOJIS.ERROR} Unknown command: \`${escapeMarkdownV2(command)}\`
 
 ${EMOJIS.WAVE} Use \`/help\` to see all available commands\\.
 
@@ -82,7 +82,7 @@ ${bold('💡 Tip:')} Make sure to include required parameters\\. For example:
 • \`/coin bitcoin\`
 • \`/p2p USDT ETB BUY\``;
 
-  await sendMessageSafe(env, chatId, errorMessage);
+  await sendMessage(env, chatId, errorMessage, 'MarkdownV2');
 }
 
 /**
@@ -157,5 +157,5 @@ ${bold('Current Features:')}
   };
 
   const responseMessage = quickActionMessages[data] || 'Unknown quick action';
-  await sendMessageSafe(env, chatId, responseMessage);
+  await sendMessage(env, chatId, responseMessage, 'MarkdownV2');
 }
