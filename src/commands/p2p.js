@@ -2,10 +2,10 @@
  * P2P command handler with enhanced features
  */
 
-import { sendMessage, sendLoadingMessage, updateLoadingMessage, createTradeTypeKeyboard } from '../api/telegram.js';
+import { sendMessage, sendLoadingMessage, updateLoadingMessage, createTradeTypeKeyboard, sendMessageSafe } from '../api/telegram.js';
 import { getP2PDataWithCache, formatP2PResponse } from '../api/binanceP2P.js';
 import { validateP2PArgs } from '../utils/validators.js';
-import { bold, escapeMarkdownV2 } from '../utils/formatters.js';
+import { bold, escapeMarkdownV2, safe } from '../utils/formatters.js';
 import { EMOJIS } from '../config/constants.js';
 
 /**
@@ -23,7 +23,7 @@ export async function handleP2P(env, chatId, args) {
     if (errors.length > 0) {
       const errorMessage = `${EMOJIS.ERROR} ${bold('P2P Command Errors:')}
 
-${errors.map(err => `• ${escapeMarkdownV2(err)}`).join('\n')}
+${errors.map(err => `• ${safe.any(err)}`).join('\n')}
 
 ${bold(`${EMOJIS.MONEY} Correct format:`)}
 \`/p2p [asset] [fiat] [type] [rows]\`
@@ -38,7 +38,7 @@ ${bold('Supported:')}
 • ${bold('Fiats:')} ETB, USD, EUR, GBP, NGN, KES, GHS
 • ${bold('Types:')} BUY, SELL`;
 
-      await sendMessage(env, chatId, errorMessage, 'MarkdownV2');
+      await sendMessageSafe(env, chatId, errorMessage);
       return;
     }
 
@@ -104,7 +104,7 @@ Could not fetch P2P data right now\\.`;
       } else if (apiError.message.includes('Network error')) {
         errorMessage += `\n\n${EMOJIS.ERROR} ${bold('Network error!')} Please check your connection and try again\\.`;
       } else {
-        errorMessage += `\n\n${EMOJIS.ERROR} Error: ${escapeMarkdownV2(apiError.message)}`;
+        errorMessage += `\n\n${EMOJIS.ERROR} Error: ${safe.any(apiError.message)}`;
       }
 
       errorMessage += `\n\n${bold(`${EMOJIS.CHART} You can try:`)}
@@ -115,7 +115,7 @@ Could not fetch P2P data right now\\.`;
       if (loadingMsg?.result?.message_id) {
         await updateLoadingMessage(env, chatId, loadingMsg.result.message_id, errorMessage, 'MarkdownV2');
       } else {
-        await sendMessage(env, chatId, errorMessage, 'MarkdownV2');
+        await sendMessageSafe(env, chatId, errorMessage);
       }
     }
 
@@ -131,9 +131,9 @@ ${bold(`${EMOJIS.WAVE} Please try:`)}
 • \`/p2p USDT ETB BUY\` \\- Try default request
 • Contact support if this persists
 
-${bold('Error details:')} ${escapeMarkdownV2(error.message)}`;
+${bold('Error details:')} ${safe.any(error.message)}`;
 
-    await sendMessage(env, chatId, errorMessage, 'MarkdownV2');
+    await sendMessageSafe(env, chatId, errorMessage);
   }
 }
 

@@ -19,14 +19,15 @@ export const CACHE_TTL = {
   COIN_SEARCH: 86400, // 24 hours
   COIN_DATA: 3600,    // 1 hour
   CHART_DATA: 3600,   // 1 hour
-  SIMPLE_PRICES: 60,  // 1 minute
+  SIMPLE_PRICES: 60,  // 1 minute - minimum 60s as required
   P2P_DATA: 300       // 5 minutes
 };
 
 export const RATE_LIMIT = {
   DEFAULT_LIMIT: 10,
   DEFAULT_WINDOW: 60, // seconds
-  COINGECKO_DELAY: 5000 // milliseconds delay between CoinGecko requests
+  COINGECKO_DELAY: 1500, // 1.5 seconds minimum between calls as required
+  COINGECKO_CACHE_MIN: 60 // minimum 60 seconds cache
 };
 
 export const CHART_CONFIG = {
