@@ -1,5 +1,5 @@
 /**
- * Utility functions for text formatting, number formatting, and markdown escaping
+ * Utility functions for text formatting, number formatting, and HTML escaping
  */
 
 /**
@@ -14,15 +14,17 @@ export function escapeMarkdown(text) {
 }
 
 /**
- * Escapes text for Telegram MarkdownV2 formatting
+ * Escapes text for Telegram HTML formatting
  * @param {string} text - Text to escape
  * @returns {string} Escaped text
  */
-export function escapeMarkdownV2(text) {
+export function escapeHTML(text) {
   if (typeof text !== 'string') return '';
-  // All special characters that need escaping in MarkdownV2
-  const escapeChars = '_*[]()~`>#+-=|{}.!\\';
-  return text.split('').map(c => escapeChars.includes(c) ? '\\' + c : c).join('');
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
 
 /**
@@ -114,34 +116,53 @@ export function delay(ms) {
 }
 
 /**
- * Safely formats a number for MarkdownV2 with proper escaping
+ * Safely formats a number for HTML with proper escaping
  * @param {number} value - Number to format
  * @param {number} decimals - Number of decimal places
  * @returns {string} Escaped formatted number
  */
 export function safeFormatNumber(value, decimals = 2) {
   const formatted = formatNumber(value, decimals);
-  return escapeMarkdownV2(formatted);
+  return escapeHTML(formatted);
 }
 
 /**
- * Safely formats large numbers for MarkdownV2 with proper escaping
+ * Safely formats large numbers for HTML with proper escaping
  * @param {number} num - Number to format
  * @returns {string} Escaped formatted large number
  */
 export function safeFormatLargeNumber(num) {
   const formatted = formatLargeNumber(num);
-  return escapeMarkdownV2(formatted);
+  return escapeHTML(formatted);
 }
 
 /**
- * Safely formats percentage change for MarkdownV2 with proper escaping
+ * Safely formats percentage change for HTML with proper escaping
  * @param {number} change - Percentage change
  * @returns {string} Escaped formatted percentage with emoji
  */
 export function safeFormatPercentageChange(change) {
   const formatted = formatPercentageChange(change);
-  return escapeMarkdownV2(formatted);
+  return escapeHTML(formatted);
+}
+
+/**
+ * Creates a safe HTML message with proper escaping for all dynamic content
+ * @param {string} template - Message template with placeholders
+ * @param {object} values - Values to substitute (will be escaped automatically)
+ * @returns {string} Safe HTML message
+ */
+export function createSafeHTMLMessage(template, values = {}) {
+  let message = template;
+  
+  // Replace placeholders with escaped values
+  Object.entries(values).forEach(([key, value]) => {
+    const placeholder = `{${key}}`;
+    const escapedValue = escapeHTML(String(value));
+    message = message.replaceAll(placeholder, escapedValue);
+  });
+  
+  return message;
 }
 
 /**
@@ -149,6 +170,7 @@ export function safeFormatPercentageChange(change) {
  * @param {string} template - Message template with placeholders
  * @param {object} values - Values to substitute (will be escaped automatically)
  * @returns {string} Safe MarkdownV2 message
+ * @deprecated Use createSafeHTMLMessage instead
  */
 export function createSafeMarkdownV2Message(template, values = {}) {
   let message = template;
@@ -164,38 +186,38 @@ export function createSafeMarkdownV2Message(template, values = {}) {
 }
 
 /**
- * Wraps text in MarkdownV2 bold formatting with proper escaping
+ * Wraps text in HTML bold formatting with proper escaping
  * @param {string} text - Text to make bold
- * @returns {string} Bold formatted text for MarkdownV2
+ * @returns {string} Bold formatted text for HTML
  */
 export function bold(text) {
-  return `*${escapeMarkdownV2(String(text))}*`;
+  return `<b>${escapeHTML(String(text))}</b>`;
 }
 
 /**
- * Wraps text in MarkdownV2 italic formatting with proper escaping
+ * Wraps text in HTML italic formatting with proper escaping
  * @param {string} text - Text to make italic
- * @returns {string} Italic formatted text for MarkdownV2
+ * @returns {string} Italic formatted text for HTML
  */
 export function italic(text) {
-  return `_${escapeMarkdownV2(String(text))}_`;
+  return `<i>${escapeHTML(String(text))}</i>`;
 }
 
 /**
- * Wraps text in MarkdownV2 code formatting with proper escaping
+ * Wraps text in HTML code formatting with proper escaping
  * @param {string} text - Text to format as code
- * @returns {string} Code formatted text for MarkdownV2
+ * @returns {string} Code formatted text for HTML
  */
 export function code(text) {
-  return `\`${escapeMarkdownV2(String(text))}\``;
+  return `<code>${escapeHTML(String(text))}</code>`;
 }
 
 /**
- * Creates a MarkdownV2 link with proper escaping
+ * Creates an HTML link with proper escaping
  * @param {string} text - Link text
  * @param {string} url - URL (should be valid, no escaping needed for URLs)
- * @returns {string} Link formatted for MarkdownV2
+ * @returns {string} Link formatted for HTML
  */
 export function link(text, url) {
-  return `[${escapeMarkdownV2(String(text))}](${url})`;
+  return `<a href="${url}">${escapeHTML(String(text))}</a>`;
 }
