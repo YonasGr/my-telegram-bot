@@ -27,12 +27,12 @@ export async function handleBuy(env, chatId, args) {
       const helpMessage = `${EMOJIS.ERROR} ${bold('Buy Command Help')}
 
 ${bold(`${EMOJIS.MONEY} Format:`)}
-<code>/buy [amount] [asset] [fiat]<code>
+<code>/buy [amount] [asset] [fiat]</code>
 
 ${bold('📝 Examples:')}
-• <code>/buy 100 USDT ETB<code> - Buy 100 USDT with ETB
-• <code>/buy 0.01 BTC USD<code> - Buy 0.01 BTC with USD
-• <code>/buy 500 USDT<code> - Buy 500 USDT with ETB (default)
+• <code>/buy 100 USDT ETB</code> - Buy 100 USDT with ETB
+• <code>/buy 0.01 BTC USD</code> - Buy 0.01 BTC with USD
+• <code>/buy 500 USDT</code> - Buy 500 USDT with ETB (default)
 
 ${bold('💡 Notes:')}
 • Amount is required
@@ -157,7 +157,7 @@ ${bold('Rate limits help:')}
 
 *${EMOJIS.CHART} Suggestions:*
 • Wait a moment and try again
-• Try <code>/p2p ${asset} ${fiat} SELL<code> for detailed view
+• Try <code>/p2p ${asset} ${fiat} SELL</code> for detailed view
 • Use popular pairs like USDT/ETB`;
 
       if (loadingMsg?.result?.message_id) {
@@ -192,12 +192,12 @@ export async function handleSell(env, chatId, args) {
       const helpMessage = `${EMOJIS.ERROR} *Sell Command Help*
 
 *${EMOJIS.MONEY} Format:*
-<code>/sell [amount] [asset] [fiat]<code>
+<code>/sell [amount] [asset] [fiat]</code>
 
 *📝 Examples:*
-• <code>/sell 100 USDT ETB<code> - Sell 100 USDT for ETB
-• <code>/sell 0.01 BTC USD<code> - Sell 0.01 BTC for USD  
-• <code>/sell 50<code> - Sell 50 USDT for ETB (legacy format)
+• <code>/sell 100 USDT ETB</code> - Sell 100 USDT for ETB
+• <code>/sell 0.01 BTC USD</code> - Sell 0.01 BTC for USD  
+• <code>/sell 50</code> - Sell 50 USDT for ETB (legacy format)
 
 *💡 Notes:*
 • Amount is required
@@ -322,7 +322,7 @@ ${bold('Rate limits help:')}
 
 *${EMOJIS.CHART} Suggestions:*
 • Wait a moment and try again
-• Try <code>/p2p ${asset} ${fiat} BUY<code> for detailed view  
+• Try <code>/p2p ${asset} ${fiat} BUY</code> for detailed view  
 • Use popular pairs like USDT/ETB`;
 
       if (loadingMsg?.result?.message_id) {

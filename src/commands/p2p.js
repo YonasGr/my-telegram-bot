@@ -26,12 +26,12 @@ export async function handleP2P(env, chatId, args) {
 ${errors.map(err => `• ${escapeHTML(err)}`).join('\n')}
 
 ${bold(`${EMOJIS.MONEY} Correct format:`)}
-<code>/p2p [asset] [fiat] [type] [rows]<code>
+<code>/p2p [asset] [fiat] [type] [rows]</code>
 
 ${bold('📝 Examples:')}
-• <code>/p2p<code> - Default USDT/ETB BUY rates
-• <code>/p2p USDT ETB SELL<code> - USDT selling rates in ETB
-• <code>/p2p BTC USD BUY 15<code> - Bitcoin buying rates, 15 results
+• <code>/p2p</code> - Default USDT/ETB BUY rates
+• <code>/p2p USDT ETB SELL</code> - USDT selling rates in ETB
+• <code>/p2p BTC USD BUY 15</code> - Bitcoin buying rates, 15 results
 
 ${bold('Supported:')}
 • ${bold('Assets:')} USDT, BTC, ETH, BNB, BUSD
@@ -110,7 +110,7 @@ Could not fetch P2P data right now.`;
       errorMessage += `\n\n${bold(`${EMOJIS.CHART} You can try:`)}
 • Wait a few seconds and retry
 • Try a different asset/fiat pair
-• Use <code>/help<code> for other commands`;
+• Use <code>/help</code> for other commands`;
 
       if (loadingMsg?.result?.message_id) {
         await updateLoadingMessage(env, chatId, loadingMsg.result.message_id, errorMessage, 'HTML');
@@ -127,8 +127,8 @@ Could not fetch P2P data right now.`;
 An unexpected error occurred while processing your P2P request.
 
 ${bold(`${EMOJIS.WAVE} Please try:`)}
-• <code>/help<code> - View command help
-• <code>/p2p USDT ETB BUY<code> - Try default request
+• <code>/help</code> - View command help
+• <code>/p2p USDT ETB BUY</code> - Try default request
 • Contact support if this persists
 
 ${bold('Error details:')} ${escapeHTML(error.message)}`;

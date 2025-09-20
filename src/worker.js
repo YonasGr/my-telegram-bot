@@ -155,7 +155,7 @@ async function routeCommand(env, chatId, command, args, userInfo) {
           await handleBuy(env, chatId, args);
         } else {
           await sendMessage(env, chatId, 
-            `${EMOJIS.ERROR} ${bold('Buy command requires amount')}\n\nExample: <code>/buy 100 USDT ETB<code>\nUse <code>/help<code> for more info.`, 'HTML');
+            `${EMOJIS.ERROR} ${bold('Buy command requires amount')}\n\nExample: <code>/buy 100 USDT ETB</code>\nUse <code>/help</code> for more info.`, 'HTML');
         }
         break;
 
@@ -164,7 +164,7 @@ async function routeCommand(env, chatId, command, args, userInfo) {
           await handleSell(env, chatId, args);
         } else {
           await sendMessage(env, chatId, 
-            `${EMOJIS.ERROR} ${bold('Sell command requires amount')}\n\nExample: <code>/sell 50 USDT ETB<code>\nUse <code>/help<code> for more info.`, 'HTML');
+            `${EMOJIS.ERROR} ${bold('Sell command requires amount')}\n\nExample: <code>/sell 50 USDT ETB</code>\nUse <code>/help</code> for more info.`, 'HTML');
         }
         break;
 
@@ -173,7 +173,7 @@ async function routeCommand(env, chatId, command, args, userInfo) {
           await handleRate(env, chatId, args);
         } else {
           await sendMessage(env, chatId, 
-            `${EMOJIS.ERROR} ${bold('Rate command requires amount and currency')}\n\nExample: <code>/rate 100 BTC USD<code>\nUse <code>/help<code> for more info.`, 'HTML');
+            `${EMOJIS.ERROR} ${bold('Rate command requires amount and currency')}\n\nExample: <code>/rate 100 BTC USD</code>\nUse <code>/help</code> for more info.`, 'HTML');
         }
         break;
 
@@ -182,7 +182,7 @@ async function routeCommand(env, chatId, command, args, userInfo) {
           await handleConvert(env, chatId, args);
         } else {
           await sendMessage(env, chatId, 
-            `${EMOJIS.ERROR} ${bold('Convert command requires amount, from, and to currencies')}\n\nExample: <code>/convert 100 ETH ADA<code>\nUse <code>/help<code> for more info.`, 'HTML');
+            `${EMOJIS.ERROR} ${bold('Convert command requires amount, from, and to currencies')}\n\nExample: <code>/convert 100 ETH ADA</code>\nUse <code>/help</code> for more info.`, 'HTML');
         }
         break;
 
@@ -191,7 +191,7 @@ async function routeCommand(env, chatId, command, args, userInfo) {
           await handleCoin(env, chatId, args);
         } else {
           await sendMessage(env, chatId, 
-            `${EMOJIS.ERROR} ${bold('Coin command requires symbol')}\n\nExample: <code>/coin bitcoin<code>\nUse <code>/help<code> for more info.`, 'HTML');
+            `${EMOJIS.ERROR} ${bold('Coin command requires symbol')}\n\nExample: <code>/coin bitcoin</code>\nUse <code>/help</code> for more info.`, 'HTML');
         }
         break;
 

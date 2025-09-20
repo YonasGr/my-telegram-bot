@@ -23,25 +23,25 @@ I provide real-time cryptocurrency data, P2P trading rates, and conversions.
 ${bold('🔧 Available Commands:')}
 
 ${bold('Basic Commands:')}
-• <code>/start<code> or <code>/help<code> - Show this help message
-• <code>/coin [symbol]<code> - Get detailed market info with interactive charts
-• <code>/rate [amount] [currency] [vs_currency]<code> - Convert currencies with live rates
+• <code>/start</code> or <code>/help</code> - Show this help message
+• <code>/coin [symbol]</code> - Get detailed market info with interactive charts
+• <code>/rate [amount] [currency] [vs_currency]</code> - Convert currencies with live rates
 
 ${bold('P2P Trading:')}
-• <code>/p2p [asset] [fiat] [type]<code> - Get Binance P2P rates
-• <code>/buy [amount] [asset] [fiat]<code> - Find best rates to buy crypto with fiat
-• <code>/sell [amount] [asset] [fiat]<code> - Find best rates to sell crypto for fiat
+• <code>/p2p [asset] [fiat] [type]</code> - Get Binance P2P rates
+• <code>/buy [amount] [asset] [fiat]</code> - Find best rates to buy crypto with fiat
+• <code>/sell [amount] [asset] [fiat]</code> - Find best rates to sell crypto for fiat
 
 ${bold('Currency Conversion:')}
-• <code>/convert [amount] [from] [to]<code> - Convert between any currencies
+• <code>/convert [amount] [from] [to]</code> - Convert between any currencies
 
 ${bold('📝 Examples:')}
-• <code>/coin bitcoin<code> - Get Bitcoin info with interactive charts
-• <code>/p2p USDT ETB BUY<code> - Get USDT buying rates in ETB
-• <code>/buy 100 USDT ETB<code> - Find best rates to buy 100 USDT with ETB
-• <code>/sell 50 USDT ETB<code> - Calculate ETB for selling 50 USDT
-• <code>/rate 100 BTC USD<code> - Convert 100 BTC to USD
-• <code>/convert 1 ETH ADA<code> - Convert 1 ETH to ADA
+• <code>/coin bitcoin</code> - Get Bitcoin info with interactive charts
+• <code>/p2p USDT ETB BUY</code> - Get USDT buying rates in ETB
+• <code>/buy 100 USDT ETB</code> - Find best rates to buy 100 USDT with ETB
+• <code>/sell 50 USDT ETB</code> - Calculate ETB for selling 50 USDT
+• <code>/rate 100 BTC USD</code> - Convert 100 BTC to USD
+• <code>/convert 1 ETH ADA</code> - Convert 1 ETH to ADA
 
 ${bold('💡 Pro Tips:')}
 • Use inline buttons for quick actions and timeframe selection
@@ -68,19 +68,19 @@ ${isHelp ? '❓' : '👨‍💻'} ${bold('Author:')} @x_Jonah
  * @returns {Promise<void>}
  */
 export async function handleUnknownCommand(env, chatId, command) {
-  const errorMessage = `${EMOJIS.ERROR} Unknown command: <code>${escapeHTML(command)}<code>
+  const errorMessage = `${EMOJIS.ERROR} Unknown command: <code>${escapeHTML(command)}</code>
 
-${EMOJIS.WAVE} Use <code>/help<code> to see all available commands.
+${EMOJIS.WAVE} Use <code>/help</code> to see all available commands.
 
 ${bold('🔧 Did you mean:')}
-• <code>/coin<code> - Get cryptocurrency information
-• <code>/p2p<code> - Get P2P trading rates  
-• <code>/convert<code> - Convert between currencies
-• <code>/buy<code> or <code>/sell<code> - P2P trading rates
+• <code>/coin</code> - Get cryptocurrency information
+• <code>/p2p</code> - Get P2P trading rates  
+• <code>/convert</code> - Convert between currencies
+• <code>/buy</code> or <code>/sell</code> - P2P trading rates
 
 ${bold('💡 Tip:')} Make sure to include required parameters. For example:
-• <code>/coin bitcoin<code>
-• <code>/p2p USDT ETB BUY<code>`;
+• <code>/coin bitcoin</code>
+• <code>/p2p USDT ETB BUY</code>`;
 
   await sendMessage(env, chatId, errorMessage, 'HTML');
 }
@@ -101,12 +101,12 @@ export async function handleQuickAction(env, callbackQuery) {
 Get real-time Binance P2P rates:
 
 ${bold('Command format:')}
-<code>/p2p [asset] [fiat] [type]<code>
+<code>/p2p [asset] [fiat] [type]</code>
 
 ${bold('Examples:')}
-• <code>/p2p<code> - Default USDT/ETB BUY rates
-• <code>/p2p USDT ETB SELL<code> - Selling rates
-• <code>/p2p BTC USD BUY<code> - Bitcoin buying rates
+• <code>/p2p</code> - Default USDT/ETB BUY rates
+• <code>/p2p USDT ETB SELL</code> - Selling rates
+• <code>/p2p BTC USD BUY</code> - Bitcoin buying rates
 
 ${bold('Supported assets:')} USDT, BTC, ETH, BNB, BUSD
 ${bold('Supported fiats:')} ETB, USD, EUR, GBP, NGN, KES, GHS`,
@@ -116,9 +116,9 @@ ${bold('Supported fiats:')} ETB, USD, EUR, GBP, NGN, KES, GHS`,
 Get detailed info about popular cryptocurrencies:
 
 ${bold('Examples:')}
-• <code>/coin bitcoin<code> - Bitcoin with interactive charts
-• <code>/coin ethereum<code> - Ethereum market data
-• <code>/coin cardano<code> - ADA information
+• <code>/coin bitcoin</code> - Bitcoin with interactive charts
+• <code>/coin ethereum</code> - Ethereum market data
+• <code>/coin cardano</code> - ADA information
 
 ${bold('Features:')}
 • Live price and 24h change
@@ -131,13 +131,13 @@ ${bold('Features:')}
 Convert between any cryptocurrencies or fiat:
 
 ${bold('Command formats:')}
-• <code>/convert [amount] [from] [to]<code>
-• <code>/rate [amount] [currency] [vs_currency]<code>
+• <code>/convert [amount] [from] [to]</code>
+• <code>/rate [amount] [currency] [vs_currency]</code>
 
 ${bold('Examples:')}
-• <code>/convert 100 ETH ADA<code> - Crypto to crypto
-• <code>/convert 1000 ETB USDT<code> - Fiat to crypto
-• <code>/rate 1 BTC USD<code> - Get current rate
+• <code>/convert 100 ETH ADA</code> - Crypto to crypto
+• <code>/convert 1000 ETB USDT</code> - Fiat to crypto
+• <code>/rate 1 BTC USD</code> - Get current rate
 
 ${bold('Special:')} ETB rates use live P2P data\\!`,
 

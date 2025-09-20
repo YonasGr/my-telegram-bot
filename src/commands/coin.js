@@ -32,13 +32,13 @@ export async function handleCoin(env, chatId, args) {
       const helpMessage = `${EMOJIS.ERROR} *Coin Command Help*
 
 *${EMOJIS.COIN} Format:*
-<code>/coin [symbol]<code>
+<code>/coin [symbol]</code>
 
 *📝 Examples:*
-• <code>/coin bitcoin<code> - Bitcoin information with charts
-• <code>/coin eth<code> - Ethereum data
-• <code>/coin cardano<code> - Cardano (ADA) info
-• <code>/coin btc<code> - Bitcoin by symbol
+• <code>/coin bitcoin</code> - Bitcoin information with charts
+• <code>/coin eth</code> - Ethereum data
+• <code>/coin cardano</code> - Cardano (ADA) info
+• <code>/coin btc</code> - Bitcoin by symbol
 
 *💡 Tips:*
 • Use coin name or symbol
@@ -65,10 +65,10 @@ ${validation.error}`;
 Could not find cryptocurrency: ${bold(escapeHTML(validation.value))}
 
 ${bold(`${EMOJIS.CHART} Suggestions:`)}
-• Try the full name: <code>bitcoin<code>, <code>ethereum<code>
-• Use common symbols: <code>btc<code>, <code>eth<code>, <code>ada<code>
+• Try the full name: <code>bitcoin</code>, <code>ethereum</code>
+• Use common symbols: <code>btc</code>, <code>eth</code>, <code>ada</code>
 • Check spelling and try again
-• Use <code>/help<code> for other commands`;
+• Use <code>/help</code> for other commands`;
 
         if (loadingMsg?.result?.message_id) {
           await updateLoadingMessage(env, chatId, loadingMsg.result.message_id, notFoundMessage, 'HTML');
@@ -183,9 +183,9 @@ ${EMOJIS.REFRESH} ${bold('Live data from CoinGecko')}`;
 
       errorMessage += `\n\n${bold(`${EMOJIS.CHART} Try:`)}
 • Wait a moment and retry
-• Use popular coins: <code>/coin bitcoin<code>
-• Check spelling: <code>/coin ethereum<code>
-• Use symbols: <code>/coin btc<code>`;
+• Use popular coins: <code>/coin bitcoin</code>
+• Check spelling: <code>/coin ethereum</code>
+• Use symbols: <code>/coin btc</code>`;
 
       if (loadingMsg?.result?.message_id) {
         await updateLoadingMessage(env, chatId, loadingMsg.result.message_id, errorMessage, 'HTML');

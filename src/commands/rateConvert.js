@@ -27,13 +27,13 @@ export async function handleRate(env, chatId, args) {
       const helpMessage = `${EMOJIS.ERROR} ${bold('Rate Command Help')}
 
 ${bold(`${EMOJIS.EXCHANGE} Format:`)}
-<code>/rate [amount] [currency] [vs_currency]<code>
+<code>/rate [amount] [currency] [vs_currency]</code>
 
 ${bold('📝 Examples:')}
-• <code>/rate 100 BTC USD<code> - Convert 100 BTC to USD
-• <code>/rate 1000 USDT ETB<code> - USDT to ETB (uses P2P rates)
-• <code>/rate 50 ETH EUR<code> - Convert 50 ETH to EUR
-• <code>/rate 1 BTC<code> - Default to USD
+• <code>/rate 100 BTC USD</code> - Convert 100 BTC to USD
+• <code>/rate 1000 USDT ETB</code> - USDT to ETB (uses P2P rates)
+• <code>/rate 50 ETH EUR</code> - Convert 50 ETH to EUR
+• <code>/rate 1 BTC</code> - Default to USD
 
 ${bold('💡 Notes:')}
 • ETB rates use live P2P data
@@ -106,7 +106,7 @@ ${bold('What you can do:')}
 • Wait a moment and retry
 • Check currency symbols
 • Try popular pairs like BTC/USD
-• Use <code>/help<code> for other commands`;
+• Use <code>/help</code> for other commands`;
 
       if (loadingMsg?.result?.message_id) {
         await updateLoadingMessage(env, chatId, loadingMsg.result.message_id, errorMessage, 'HTML');
@@ -143,7 +143,7 @@ Could not find ${currency}/${vsCurrency} P2P rates right now.
 
 *${EMOJIS.CHART} Suggestions:*
 • Try USDT which has the most liquidity
-• Check supported pairs: <code>/p2p<code> command
+• Check supported pairs: <code>/p2p</code> command
 • Try again in a few minutes`;
 
       if (loadingMsg?.result?.message_id) {
@@ -260,13 +260,13 @@ export async function handleConvert(env, chatId, args) {
       const helpMessage = `${EMOJIS.ERROR} *Convert Command Help*
 
 *${EMOJIS.EXCHANGE} Format:*
-<code>/convert [amount] [from] [to]<code>
+<code>/convert [amount] [from] [to]</code>
 
 *📝 Examples:*
-• <code>/convert 100 ETH ADA<code> - Crypto to crypto
-• <code>/convert 1000 ETB USDT<code> - Fiat to crypto (P2P rates)
-• <code>/convert 1 BTC EUR<code> - Crypto to fiat
-• <code>/convert 50 USDT ETB<code> - Crypto to fiat (P2P rates)
+• <code>/convert 100 ETH ADA</code> - Crypto to crypto
+• <code>/convert 1000 ETB USDT</code> - Fiat to crypto (P2P rates)
+• <code>/convert 1 BTC EUR</code> - Crypto to fiat
+• <code>/convert 50 USDT ETB</code> - Crypto to fiat (P2P rates)
 
 *💡 Notes:*
 • All parameters required
