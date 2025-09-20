@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { formatP2PResponse } from '../src/api/binanceP2P.js';
 
-describe('MarkdownV2 Integration Tests', () => {
+describe('HTML Integration Tests', () => {
   describe('P2P Response Formatting', () => {
-    it('should properly escape trader names with special characters', () => {
+    it('should properly format trader names with HTML escaping', () => {
       const mockData = {
         data: {
           data: [
@@ -46,23 +46,25 @@ describe('MarkdownV2 Integration Tests', () => {
 
       const result = formatP2PResponse(mockData, 'USDT', 'ETB', 'BUY', 2);
       
-      // Check that special characters are properly escaped
-      expect(result).toContain('User\\_Test\\.Pro');
-      expect(result).toContain('123\\.45');
+      // Check that text is properly formatted for HTML (no MarkdownV2 escaping)
+      expect(result).toContain('User_Test.Pro');
+      expect(result).toContain('123.45');
       expect(result).toContain('1000');
-      expect(result).toContain('50 \\- 500');
-      expect(result).toContain('100 \\(98\\.0% success\\)');
-      expect(result).toContain('Crypto\\[King\\]\\-\\(Expert\\)');
-      expect(result).toContain('124\\.50');
-      expect(result).toContain('50 \\(95\\.0% success\\)');
+      expect(result).toContain('50 - 500');
+      expect(result).toContain('100 (98.0% success)');
+      expect(result).toContain('Crypto[King]-(Expert)');
+      expect(result).toContain('124.50');
+      expect(result).toContain('50 (95.0% success)');
       
-      // Should contain the basic structure with properly escaped trader names
-      expect(result).toContain('*1\\. User\\_Test\\.Pro*');
-      expect(result).toContain('*2\\. Crypto\\[King\\]\\-\\(Expert\\)*');
+      // Should contain HTML formatting instead of MarkdownV2
+      expect(result).toContain('<b>1. User_Test.Pro</b>');
+      expect(result).toContain('<b>2. Crypto[King]-(Expert)</b>');
+      expect(result).toContain('<b>Binance P2P BUY USDT for ETB</b>');
+      expect(result).toContain('<b>Live data from Binance P2P</b>');
       
-      // Verify the overall structure is valid MarkdownV2
-      expect(result).toContain('💰 *Binance P2P BUY USDT for ETB*');
-      expect(result).toContain('🔄 *Live data from Binance P2P*');
+      // Verify the overall structure is valid HTML
+      expect(result).toContain('💰 <b>Binance P2P BUY USDT for ETB</b>');
+      expect(result).toContain('🔄 <b>Live data from Binance P2P</b>');
     });
 
     it('should handle empty data gracefully', () => {
@@ -85,8 +87,8 @@ describe('MarkdownV2 Integration Tests', () => {
     });
   });
 
-  describe('Real-world MarkdownV2 scenarios', () => {
-    it('should handle common cryptocurrency price formats', () => {
+  describe('Real-world HTML formatting scenarios', () => {
+    it('should handle common cryptocurrency price formats without escaping', () => {
       const testScenarios = [
         {
           input: 'Bitcoin (BTC): $45,123.67',

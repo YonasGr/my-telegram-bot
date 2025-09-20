@@ -6,7 +6,7 @@ import { sendMessage, sendLoadingMessage, updateLoadingMessage } from '../api/te
 import { searchCoinSymbol, getMultipleCoinPrices } from '../api/coinGecko.js';
 import { getBestP2PRate } from '../api/binanceP2P.js';
 import { validateAmount, validateCurrency, validateConversion } from '../utils/validators.js';
-import { safeFormatNumber, bold, escapeMarkdownV2, formatNumber } from '../utils/formatters.js';
+import { safeFormatNumber, bold, escapeHTML, formatNumber } from '../utils/formatters.js';
 import { EMOJIS, SUPPORTED_FIATS } from '../config/constants.js';
 
 /**
@@ -30,23 +30,23 @@ ${bold(`${EMOJIS.EXCHANGE} Format:`)}
 \`/rate [amount] [currency] [vs_currency]\`
 
 ${bold('📝 Examples:')}
-• \`/rate 100 BTC USD\` \\- Convert 100 BTC to USD
-• \`/rate 1000 USDT ETB\` \\- USDT to ETB \\(uses P2P rates\\)
-• \`/rate 50 ETH EUR\` \\- Convert 50 ETH to EUR
-• \`/rate 1 BTC\` \\- Default to USD
+• \`/rate 100 BTC USD\` - Convert 100 BTC to USD
+• \`/rate 1000 USDT ETB\` - USDT to ETB (uses P2P rates)
+• \`/rate 50 ETH EUR\` - Convert 50 ETH to EUR
+• \`/rate 1 BTC\` - Default to USD
 
 ${bold('💡 Notes:')}
 • ETB rates use live P2P data
 • Other conversions use CoinGecko rates
 • Default target currency is USD`;
 
-      await sendMessage(env, chatId, helpMessage, 'MarkdownV2');
+      await sendMessage(env, chatId, helpMessage, 'HTML');
       return;
     }
 
     const amountValidation = validateAmount(amount);
     if (!amountValidation.isValid) {
-      await sendMessage(env, chatId, `${EMOJIS.ERROR} ${escapeMarkdownV2(amountValidation.error)}`, 'MarkdownV2');
+      await sendMessage(env, chatId, `${EMOJIS.ERROR} ${escapeHTML(amountValidation.error)}`, 'HTML');
       return;
     }
 
@@ -55,7 +55,7 @@ ${bold('💡 Notes:')}
 
     if (!currencyValidation.isValid || !vsCurrencyValidation.isValid) {
       const error = currencyValidation.error || vsCurrencyValidation.error;
-      await sendMessage(env, chatId, `${EMOJIS.ERROR} ${error}`, 'MarkdownV2');
+      await sendMessage(env, chatId, `${EMOJIS.ERROR} ${error}`, 'HTML');
       return;
     }
 
@@ -78,12 +78,12 @@ ${bold('💡 Notes:')}
       
       let errorMessage = `${EMOJIS.WARNING} *Could not fetch conversion rate*
 
-${escapeMarkdownV2(apiError.message)}`;
+${escapeHTML(apiError.message)}`;
 
       if (apiError.message.includes('⚠️ CoinGecko API rate limit exceeded')) {
         errorMessage = `${EMOJIS.WARNING} *Rate Limit Reached*
 
-⚠️ CoinGecko API rate limit exceeded\\. Please try again in a minute\\.
+⚠️ CoinGecko API rate limit exceeded. Please try again in a minute.
 
 ${bold('Why rate limits exist:')}
 • Ensures fair access for all users
@@ -97,7 +97,7 @@ ${bold('What you can do:')}
       } else if (apiError.message.includes('rate limit')) {
         errorMessage = `${EMOJIS.WARNING} *Service Busy*
 
-⚠️ CoinGecko API rate limit exceeded\\. Please try again in a minute\\.`;
+⚠️ CoinGecko API rate limit exceeded. Please try again in a minute.`;
       }
 
       errorMessage += `
@@ -109,15 +109,15 @@ ${bold('What you can do:')}
 • Use \`/help\` for other commands`;
 
       if (loadingMsg?.result?.message_id) {
-        await updateLoadingMessage(env, chatId, loadingMsg.result.message_id, errorMessage, 'MarkdownV2');
+        await updateLoadingMessage(env, chatId, loadingMsg.result.message_id, errorMessage, 'HTML');
       } else {
-        await sendMessage(env, chatId, errorMessage, 'MarkdownV2');
+        await sendMessage(env, chatId, errorMessage, 'HTML');
       }
     }
 
   } catch (error) {
     console.error("Rate command error:", error);
-    await sendMessage(env, chatId, `${EMOJIS.ERROR} Error processing request: ${escapeMarkdownV2(error.message)}`, 'MarkdownV2');
+    await sendMessage(env, chatId, `${EMOJIS.ERROR} Error processing request: ${escapeHTML(error.message)}`, 'HTML');
   }
 }
 
@@ -139,7 +139,7 @@ async function handleP2PRate(env, chatId, amount, currency, vsCurrency, loadingM
     if (!p2pRate) {
       const noRateMessage = `${EMOJIS.ERROR} *No P2P rates available*
 
-Could not find ${currency}/${vsCurrency} P2P rates right now\\.
+Could not find ${currency}/${vsCurrency} P2P rates right now.
 
 *${EMOJIS.CHART} Suggestions:*
 • Try USDT which has the most liquidity
@@ -147,9 +147,9 @@ Could not find ${currency}/${vsCurrency} P2P rates right now\\.
 • Try again in a few minutes`;
 
       if (loadingMsg?.result?.message_id) {
-        await updateLoadingMessage(env, chatId, loadingMsg.result.message_id, noRateMessage, 'MarkdownV2');
+        await updateLoadingMessage(env, chatId, loadingMsg.result.message_id, noRateMessage, 'HTML');
       } else {
-        await sendMessage(env, chatId, noRateMessage, 'MarkdownV2');
+        await sendMessage(env, chatId, noRateMessage, 'HTML');
       }
       return;
     }
@@ -162,19 +162,19 @@ Could not find ${currency}/${vsCurrency} P2P rates right now\\.
 
 *📊 P2P Rate Details:*
 • *Current Rate:* 1 ${currency} = ${safeFormatNumber(p2pRate.price, 2)} ${vsCurrency}
-• *Best Trader:* ${escapeMarkdownV2(p2pRate.trader.name)}
+• *Best Trader:* ${escapeHTML(p2pRate.trader.name)}
 • *Available:* ${safeFormatNumber(p2pRate.availableAmount)} ${currency}
-• *Trade Limits:* ${safeFormatNumber(p2pRate.minAmount)} \\- ${safeFormatNumber(p2pRate.maxAmount)} ${vsCurrency}
-• *Success Rate:* ${safeFormatNumber(p2pRate.trader.successRate, 1)}% \\(${escapeMarkdownV2(p2pRate.trader.orders.toString())} orders\\)
+• *Trade Limits:* ${safeFormatNumber(p2pRate.minAmount)} - ${safeFormatNumber(p2pRate.maxAmount)} ${vsCurrency}
+• *Success Rate:* ${safeFormatNumber(p2pRate.trader.successRate, 1)}% (${escapeHTML(p2pRate.trader.orders.toString())} orders)
 
-${p2pRate.paymentMethods.length > 0 ? `*🏦 Payment Methods:* ${escapeMarkdownV2(p2pRate.paymentMethods.join(", "))}` : ''}
+${p2pRate.paymentMethods.length > 0 ? `*🏦 Payment Methods:* ${escapeHTML(p2pRate.paymentMethods.join(", "))}` : ''}
 
 ${EMOJIS.REFRESH} *Live P2P data from Binance*`;
 
     if (loadingMsg?.result?.message_id) {
-      await updateLoadingMessage(env, chatId, loadingMsg.result.message_id, rateMessage, 'MarkdownV2');
+      await updateLoadingMessage(env, chatId, loadingMsg.result.message_id, rateMessage, 'HTML');
     } else {
-      await sendMessage(env, chatId, rateMessage, 'MarkdownV2');
+      await sendMessage(env, chatId, rateMessage, 'HTML');
     }
 
   } catch (error) {
@@ -211,10 +211,10 @@ async function handleStandardRate(env, chatId, amount, currency, vsCurrency, loa
 
     const result = amount * price;
     const changeIndicator = priceChange24h !== undefined 
-      ? `\\(${priceChange24h >= 0 ? '+' : ''}${safeFormatNumber(priceChange24h, 2)}% 24h\\)` 
+      ? `(${priceChange24h >= 0 ? '+' : ''}${safeFormatNumber(priceChange24h, 2)}% 24h)` 
       : '';
 
-    const rateMessage = `${EMOJIS.EXCHANGE} *Real\\-time Rate Conversion*
+    const rateMessage = `${EMOJIS.EXCHANGE} *Real-time Rate Conversion*
 
 *${amount} ${currency}* ≈ *${safeFormatNumber(result, vsCurrency === 'USD' ? 2 : 6)} ${vsCurrency}*
 
@@ -223,15 +223,15 @@ async function handleStandardRate(env, chatId, amount, currency, vsCurrency, loa
 ${priceChange24h !== undefined ? `• *24h Change:* ${priceChange24h >= 0 ? '🟢' : '🔴'} ${priceChange24h >= 0 ? '+' : ''}${safeFormatNumber(priceChange24h, 2)}%` : ''}
 
 *${EMOJIS.COIN} Coin Info:*
-• *Full Name:* ${escapeMarkdownV2(coinData.name)}
-• *Symbol:* ${escapeMarkdownV2(coinData.symbol.toUpperCase())}
+• *Full Name:* ${escapeHTML(coinData.name)}
+• *Symbol:* ${escapeHTML(coinData.symbol.toUpperCase())}
 
 ${EMOJIS.REFRESH} *Live data from CoinGecko*`;
 
     if (loadingMsg?.result?.message_id) {
-      await updateLoadingMessage(env, chatId, loadingMsg.result.message_id, rateMessage, 'MarkdownV2');
+      await updateLoadingMessage(env, chatId, loadingMsg.result.message_id, rateMessage, 'HTML');
     } else {
-      await sendMessage(env, chatId, rateMessage, 'MarkdownV2');
+      await sendMessage(env, chatId, rateMessage, 'HTML');
     }
 
   } catch (error) {
@@ -263,10 +263,10 @@ export async function handleConvert(env, chatId, args) {
 \`/convert [amount] [from] [to]\`
 
 *📝 Examples:*
-• \`/convert 100 ETH ADA\` \\- Crypto to crypto
-• \`/convert 1000 ETB USDT\` \\- Fiat to crypto \\(P2P rates\\)
-• \`/convert 1 BTC EUR\` \\- Crypto to fiat
-• \`/convert 50 USDT ETB\` \\- Crypto to fiat \\(P2P rates\\)
+• \`/convert 100 ETH ADA\` - Crypto to crypto
+• \`/convert 1000 ETB USDT\` - Fiat to crypto (P2P rates)
+• \`/convert 1 BTC EUR\` - Crypto to fiat
+• \`/convert 50 USDT ETB\` - Crypto to fiat (P2P rates)
 
 *💡 Notes:*
 • All parameters required
@@ -274,7 +274,7 @@ export async function handleConvert(env, chatId, args) {
 • Supports crypto ↔ crypto and crypto ↔ fiat
 • Live market rates from CoinGecko & Binance`;
 
-      await sendMessage(env, chatId, helpMessage, 'MarkdownV2');
+      await sendMessage(env, chatId, helpMessage, 'HTML');
       return;
     }
 
@@ -284,7 +284,7 @@ export async function handleConvert(env, chatId, args) {
 
 ${validation.errors.map(err => `• ${err}`).join('\n')}`;
 
-      await sendMessage(env, chatId, errorMessage, 'MarkdownV2');
+      await sendMessage(env, chatId, errorMessage, 'HTML');
       return;
     }
 
@@ -300,14 +300,14 @@ ${validation.errors.map(err => `• ${err}`).join('\n')}`;
       
       let errorMessage = `${EMOJIS.WARNING} *Conversion failed*
 
-${escapeMarkdownV2(apiError.message)}`;
+${escapeHTML(apiError.message)}`;
 
       if (apiError.message.includes('⚠️ CoinGecko API rate limit exceeded') || apiError.message.includes('rate limit')) {
         errorMessage = `${EMOJIS.WARNING} *Rate Limit Reached*
 
-⚠️ CoinGecko API rate limit exceeded\\. Please try again in a minute\\.
+⚠️ CoinGecko API rate limit exceeded. Please try again in a minute.
 
-${bold('Tip:')} Rate limits help keep the service fast and reliable for everyone\\.`;
+${bold('Tip:')} Rate limits help keep the service fast and reliable for everyone.`;
       }
 
       errorMessage += `
@@ -319,15 +319,15 @@ ${bold('Tip:')} Rate limits help keep the service fast and reliable for everyone
 • ETB pairs: use USDT/ETB, BTC/ETB etc`;
 
       if (loadingMsg?.result?.message_id) {
-        await updateLoadingMessage(env, chatId, loadingMsg.result.message_id, errorMessage, 'MarkdownV2');
+        await updateLoadingMessage(env, chatId, loadingMsg.result.message_id, errorMessage, 'HTML');
       } else {
-        await sendMessage(env, chatId, errorMessage, 'MarkdownV2');
+        await sendMessage(env, chatId, errorMessage, 'HTML');
       }
     }
 
   } catch (error) {
     console.error("Convert command error:", error);
-    await sendMessage(env, chatId, `${EMOJIS.ERROR} Error processing request: ${escapeMarkdownV2(error.message)}`, 'MarkdownV2');
+    await sendMessage(env, chatId, `${EMOJIS.ERROR} Error processing request: ${escapeHTML(error.message)}`, 'HTML');
   }
 }
 
@@ -412,8 +412,8 @@ async function performConversion(env, chatId, amount, fromCurrency, toCurrency, 
 *📊 Conversion Details:*
 • *Rate:* 1 ${fromCurrency.toUpperCase()} = ${safeFormatNumber(conversionRate, 6)} ${toCurrency.toUpperCase()}
 • *USD Values:*
-  \\- 1 ${fromCurrency.toUpperCase()} = $${safeFormatNumber(fromPriceUSD, 6)}
-  \\- 1 ${toCurrency.toUpperCase()} = $${safeFormatNumber(toPriceUSD, 6)}
+  - 1 ${fromCurrency.toUpperCase()} = $${safeFormatNumber(fromPriceUSD, 6)}
+  - 1 ${toCurrency.toUpperCase()} = $${safeFormatNumber(toPriceUSD, 6)}
 
 *${EMOJIS.CHART} Data Sources:*
 ${isFromP2P ? `• ${fromCurrency.toUpperCase()}: Binance P2P rates` : `• ${fromCurrency.toUpperCase()}: CoinGecko market data`}
@@ -422,8 +422,8 @@ ${isToP2P ? `• ${toCurrency.toUpperCase()}: Binance P2P rates` : `• ${toCurr
 ${EMOJIS.REFRESH} *Live data from multiple sources*`;
 
   if (loadingMsg?.result?.message_id) {
-    await updateLoadingMessage(env, chatId, loadingMsg.result.message_id, convertMessage, 'MarkdownV2');
+    await updateLoadingMessage(env, chatId, loadingMsg.result.message_id, convertMessage, 'HTML');
   } else {
-    await sendMessage(env, chatId, convertMessage, 'MarkdownV2');
+    await sendMessage(env, chatId, convertMessage, 'HTML');
   }
 }

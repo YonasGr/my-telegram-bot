@@ -73,7 +73,7 @@ ${bold(EMOJIS.CHART + ' Suggestions:')}
         if (loadingMsg?.result?.message_id) {
           await updateLoadingMessage(env, chatId, loadingMsg.result.message_id, notFoundMessage, 'HTML');
         } else {
-          await sendMessage(env, chatId, notFoundMessage, 'MarkdownV2');
+          await sendMessage(env, chatId, notFoundMessage, 'HTML');
         }
         return;
       }
@@ -111,12 +111,12 @@ ${bold(EMOJIS.CHART + ' Suggestions:')}
 ${bold('💰 Price Information:')}
 • ${bold('Current Price:')} $${safeFormatNumber(currentPrice, currentPrice > 1 ? 2 : 6)}
 • ${bold('24h Change:')} ${safeFormatPercentageChange(priceChange24h)}
-${marketCapRank ? `• ${bold('Market Cap Rank:')} #${escapeMarkdownV2(marketCapRank.toString())}` : ''}
+${marketCapRank ? `• ${bold('Market Cap Rank:')} #${escapeHTML(marketCapRank.toString())}` : ''}
 
 ${bold('📊 Market Statistics:')}
 • ${bold('Market Cap:')} $${safeFormatLargeNumber(marketCap)}
 • ${bold('24h Volume:')} $${safeFormatLargeNumber(volume24h)}
-${circulatingSupply ? `• ${bold('Circulating Supply:')} ${safeFormatLargeNumber(circulatingSupply)} ${escapeMarkdownV2(coinData.symbol.toUpperCase())}` : ''}
+${circulatingSupply ? `• ${bold('Circulating Supply:')} ${safeFormatLargeNumber(circulatingSupply)} ${escapeHTML(coinData.symbol.toUpperCase())}` : ''}
 
 ${bold('📈 Additional Data:')}`;
 
@@ -156,10 +156,10 @@ ${EMOJIS.REFRESH} ${bold('Live data from CoinGecko')}`;
       if (loadingMsg?.result?.message_id) {
         // Update loading message to final result, then send chart
         await updateLoadingMessage(env, chatId, loadingMsg.result.message_id, 
-          `${EMOJIS.SUCCESS} Data fetched\\! Sending chart\\.\\.\\.`, 'MarkdownV2');
-        await sendPhoto(env, chatId, chartUrl, finalMessage, 'MarkdownV2', keyboard);
+          `${EMOJIS.SUCCESS} Data fetched! Sending chart...`, 'HTML');
+        await sendPhoto(env, chatId, chartUrl, finalMessage, 'HTML', keyboard);
       } else {
-        await sendPhoto(env, chatId, chartUrl, finalMessage, 'MarkdownV2', keyboard);
+        await sendPhoto(env, chatId, chartUrl, finalMessage, 'HTML', keyboard);
       }
 
       console.log(`Coin data sent successfully for: ${coinData.name} (${coinData.symbol})`);
@@ -170,33 +170,33 @@ ${EMOJIS.REFRESH} ${bold('Live data from CoinGecko')}`;
       let errorMessage = `${EMOJIS.WARNING} ${bold('Could not fetch coin data')}`;
 
       if (apiError.message.includes('⚠️ CoinGecko API rate limit exceeded')) {
-        errorMessage += `\n\n${apiError.message}\n\n${bold('Please wait about a minute before trying again\\.')}\n\n${EMOJIS.LOADING} ${bold('Rate limiting helps keep the service available for everyone\\.')}`;
+        errorMessage += `\n\n${apiError.message}\n\n${bold('Please wait about a minute before trying again.')}\n\n${EMOJIS.LOADING} ${bold('Rate limiting helps keep the service available for everyone.')}`;
       } else if (apiError.message.includes('rate limit')) {
-        errorMessage += `\n\n⚠️ CoinGecko API rate limit exceeded\\. Please try again in a minute\\.`;
+        errorMessage += `\n\n⚠️ CoinGecko API rate limit exceeded. Please try again in a minute.`;
       } else if (apiError.message.includes('not found')) {
-        errorMessage += `\n\n${EMOJIS.ERROR} ${bold('Cryptocurrency not found!')} Please check the name/symbol and try again\\.`;
+        errorMessage += `\n\n${EMOJIS.ERROR} ${bold('Cryptocurrency not found!')} Please check the name/symbol and try again.`;
       } else if (apiError.message.includes('Network error')) {
-        errorMessage += `\n\n${EMOJIS.ERROR} ${bold('Network error!')} Could not connect to data service\\.`;
+        errorMessage += `\n\n${EMOJIS.ERROR} ${bold('Network error!')} Could not connect to data service.`;
       } else {
-        errorMessage += `\n\n${EMOJIS.ERROR} ${escapeMarkdownV2(apiError.message)}`;
+        errorMessage += `\n\n${EMOJIS.ERROR} ${escapeHTML(apiError.message)}`;
       }
 
-      errorMessage += `\n\n${bold(`${EMOJIS.CHART} Try:`)}
+      errorMessage += `\n\n${bold(EMOJIS.CHART + ' Try:')}
 • Wait a moment and retry
-• Use popular coins: \`/coin bitcoin\`
-• Check spelling: \`/coin ethereum\`
-• Use symbols: \`/coin btc\``;
+• Use popular coins: <code>/coin bitcoin</code>
+• Check spelling: <code>/coin ethereum</code>
+• Use symbols: <code>/coin btc</code>`;
 
       if (loadingMsg?.result?.message_id) {
-        await updateLoadingMessage(env, chatId, loadingMsg.result.message_id, errorMessage, 'MarkdownV2');
+        await updateLoadingMessage(env, chatId, loadingMsg.result.message_id, errorMessage, 'HTML');
       } else {
-        await sendMessage(env, chatId, errorMessage, 'MarkdownV2');
+        await sendMessage(env, chatId, errorMessage, 'HTML');
       }
     }
 
   } catch (error) {
     console.error("Coin command error:", error);
-    await sendMessage(env, chatId, `${EMOJIS.ERROR} Error processing coin request: ${escapeMarkdownV2(error.message)}`, 'MarkdownV2');
+    await sendMessage(env, chatId, `${EMOJIS.ERROR} Error processing coin request: ${escapeHTML(error.message)}`, 'HTML');
   }
 }
 
@@ -224,7 +224,7 @@ export async function handleCoinCallback(env, callbackQuery) {
 
     // Update with loading state
     await updateLoadingMessage(env, chatId, messageId, 
-      `${EMOJIS.LOADING} Generating ${days}\\-day chart...`);
+      `${EMOJIS.LOADING} Generating ${days}-day chart...`);
 
     // Fetch fresh chart data for the requested timeframe
     const [coinData, detailedData, marketChart] = await Promise.all([
@@ -269,12 +269,12 @@ ${EMOJIS.REFRESH} ${bold('Live data from CoinGecko')}`;
     const keyboard = createTimeframeKeyboard('coin', coinId);
 
     // Send new photo with updated caption
-    await sendPhoto(env, chatId, chartUrl, updatedMessage, 'MarkdownV2', keyboard);
+    await sendPhoto(env, chatId, chartUrl, updatedMessage, 'HTML', keyboard);
 
   } catch (error) {
     console.error("Coin callback error:", error);
     
     await updateLoadingMessage(env, chatId, messageId, 
-      `${EMOJIS.ERROR} Error updating chart\\. Please try the command again\\.`, 'MarkdownV2');
+      `${EMOJIS.ERROR} Error updating chart. Please try the command again.`, 'HTML');
   }
 }
