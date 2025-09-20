@@ -10,7 +10,7 @@ import {
   safeFormatNumber, 
   safeFormatLargeNumber, 
   safeFormatPercentageChange,
-  escapeMarkdownV2,
+  escapeHTML,
   bold 
 } from '../utils/formatters.js';
 import { EMOJIS, CHART_CONFIG } from '../config/constants.js';
@@ -29,18 +29,18 @@ export async function handleCoin(env, chatId, args) {
     // Validate coin symbol
     const validation = validateCoinSymbol(coinSymbol);
     if (!validation.isValid) {
-      const helpMessage = `${EMOJIS.ERROR} *Coin Command Help*
+      const helpMessage = `${EMOJIS.ERROR} ${bold('Coin Command Help')}
 
-*${EMOJIS.COIN} Format:*
-\`/coin [symbol]\`
+${bold(EMOJIS.COIN + ' Format:')}
+<code>/coin [symbol]</code>
 
-*📝 Examples:*
-• \`/coin bitcoin\` \\- Bitcoin information with charts
-• \`/coin eth\` \\- Ethereum data
-• \`/coin cardano\` \\- Cardano \\(ADA\\) info
-• \`/coin btc\` \\- Bitcoin by symbol
+${bold('📝 Examples:')}
+• <code>/coin bitcoin</code> - Bitcoin information with charts
+• <code>/coin eth</code> - Ethereum data
+• <code>/coin cardano</code> - Cardano (ADA) info
+• <code>/coin btc</code> - Bitcoin by symbol
 
-*💡 Tips:*
+${bold('💡 Tips:')}
 • Use coin name or symbol
 • Charts support 1d/7d/30d timeframes
 • Click chart buttons for different periods
@@ -48,7 +48,7 @@ export async function handleCoin(env, chatId, args) {
 
 ${validation.error}`;
 
-      await sendMessage(env, chatId, helpMessage, 'MarkdownV2');
+      await sendMessage(env, chatId, helpMessage, 'HTML');
       return;
     }
 
@@ -62,16 +62,16 @@ ${validation.error}`;
       if (!coinData) {
         const notFoundMessage = `${EMOJIS.ERROR} ${bold('Coin not found')}
 
-Could not find cryptocurrency: ${bold(escapeMarkdownV2(validation.value))}
+Could not find cryptocurrency: ${bold(escapeHTML(validation.value))}
 
-${bold(`${EMOJIS.CHART} Suggestions:`)}
-• Try the full name: \`bitcoin\`, \`ethereum\`
-• Use common symbols: \`btc\`, \`eth\`, \`ada\`
+${bold(EMOJIS.CHART + ' Suggestions:')}
+• Try the full name: <code>bitcoin</code>, <code>ethereum</code>
+• Use common symbols: <code>btc</code>, <code>eth</code>, <code>ada</code>
 • Check spelling and try again
-• Use \`/help\` for other commands`;
+• Use <code>/help</code> for other commands`;
 
         if (loadingMsg?.result?.message_id) {
-          await updateLoadingMessage(env, chatId, loadingMsg.result.message_id, notFoundMessage, 'MarkdownV2');
+          await updateLoadingMessage(env, chatId, loadingMsg.result.message_id, notFoundMessage, 'HTML');
         } else {
           await sendMessage(env, chatId, notFoundMessage, 'MarkdownV2');
         }

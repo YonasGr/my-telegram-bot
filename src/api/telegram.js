@@ -13,7 +13,7 @@ import { API_URLS } from '../config/constants.js';
  * @param {object} replyMarkup - Inline keyboard markup
  * @returns {Promise<object|null>} Telegram API response
  */
-export async function sendMessage(env, chatId, text, parseMode = 'MarkdownV2', replyMarkup = null) {
+export async function sendMessage(env, chatId, text, parseMode = 'HTML', replyMarkup = null) {
   try {
     const payload = {
       chat_id: chatId,
@@ -38,10 +38,10 @@ export async function sendMessage(env, chatId, text, parseMode = 'MarkdownV2', r
       const errorText = await response.text();
       console.error(`Telegram sendMessage error ${response.status}:`, errorText);
       
-      // Try with Markdown if MarkdownV2 fails
-      if (parseMode === 'MarkdownV2' && response.status === 400) {
-        console.log('Retrying with Markdown parse mode...');
-        return sendMessage(env, chatId, text, 'Markdown', replyMarkup);
+      // Try with plain text if HTML fails
+      if (parseMode === 'HTML' && response.status === 400) {
+        console.log('Retrying without parse mode...');
+        return sendMessage(env, chatId, text, null, replyMarkup);
       }
       
       return null;
@@ -67,7 +67,7 @@ export async function sendMessage(env, chatId, text, parseMode = 'MarkdownV2', r
  * @param {object} replyMarkup - Inline keyboard markup
  * @returns {Promise<object|null>} Telegram API response
  */
-export async function sendPhoto(env, chatId, photoUrl, caption = '', parseMode = 'MarkdownV2', replyMarkup = null) {
+export async function sendPhoto(env, chatId, photoUrl, caption = '', parseMode = 'HTML', replyMarkup = null) {
   try {
     const payload = {
       chat_id: chatId,
@@ -122,7 +122,7 @@ export async function sendPhoto(env, chatId, photoUrl, caption = '', parseMode =
  * @param {object} replyMarkup - Inline keyboard markup
  * @returns {Promise<object|null>} Telegram API response
  */
-export async function editMessage(env, chatId, messageId, text, parseMode = 'MarkdownV2', replyMarkup = null) {
+export async function editMessage(env, chatId, messageId, text, parseMode = 'HTML', replyMarkup = null) {
   try {
     const payload = {
       chat_id: chatId,
@@ -311,7 +311,7 @@ export async function sendTypingAction(env, chatId) {
  */
 export async function sendLoadingMessage(env, chatId, loadingText = '⏳ Processing your request...') {
   await sendTypingAction(env, chatId);
-  return sendMessage(env, chatId, loadingText, 'MarkdownV2');
+  return sendMessage(env, chatId, loadingText, 'HTML');
 }
 
 /**
@@ -324,6 +324,6 @@ export async function sendLoadingMessage(env, chatId, loadingText = '⏳ Process
  * @param {object} replyMarkup - Inline keyboard markup
  * @returns {Promise<object|null>} Edit result
  */
-export async function updateLoadingMessage(env, chatId, messageId, finalText, parseMode = 'MarkdownV2', replyMarkup = null) {
+export async function updateLoadingMessage(env, chatId, messageId, finalText, parseMode = 'HTML', replyMarkup = null) {
   return editMessage(env, chatId, messageId, finalText, parseMode, replyMarkup);
 }
