@@ -5,7 +5,7 @@
 import { sendMessage, sendLoadingMessage, updateLoadingMessage, createTradeTypeKeyboard } from '../api/telegram.js';
 import { getP2PDataWithCache, formatP2PResponse } from '../api/binanceP2P.js';
 import { validateP2PArgs } from '../utils/validators.js';
-import { bold, escapeMarkdownV2 } from '../utils/formatters.js';
+import { bold, escapeHTML } from '../utils/formatters.js';
 import { EMOJIS } from '../config/constants.js';
 
 /**
@@ -23,22 +23,22 @@ export async function handleP2P(env, chatId, args) {
     if (errors.length > 0) {
       const errorMessage = `${EMOJIS.ERROR} ${bold('P2P Command Errors:')}
 
-${errors.map(err => `• ${escapeMarkdownV2(err)}`).join('\n')}
+${errors.map(err => `• ${escapeHTML(err)}`).join('\n')}
 
 ${bold(`${EMOJIS.MONEY} Correct format:`)}
-\`/p2p [asset] [fiat] [type] [rows]\`
+<code>/p2p [asset] [fiat] [type] [rows]<code>
 
 ${bold('📝 Examples:')}
-• \`/p2p\` \\- Default USDT/ETB BUY rates
-• \`/p2p USDT ETB SELL\` \\- USDT selling rates in ETB
-• \`/p2p BTC USD BUY 15\` \\- Bitcoin buying rates, 15 results
+• <code>/p2p<code> - Default USDT/ETB BUY rates
+• <code>/p2p USDT ETB SELL<code> - USDT selling rates in ETB
+• <code>/p2p BTC USD BUY 15<code> - Bitcoin buying rates, 15 results
 
 ${bold('Supported:')}
 • ${bold('Assets:')} USDT, BTC, ETH, BNB, BUSD
 • ${bold('Fiats:')} ETB, USD, EUR, GBP, NGN, KES, GHS
 • ${bold('Types:')} BUY, SELL`;
 
-      await sendMessage(env, chatId, errorMessage, 'MarkdownV2');
+      await sendMessage(env, chatId, errorMessage, 'HTML');
       return;
     }
 
@@ -53,10 +53,10 @@ ${bold('Supported:')}
       if (!data?.data?.data || data.data.data.length === 0) {
         const noDataMessage = `${EMOJIS.ERROR} ${bold(`No ${tradeType} offers found`)}
 
-No active ${tradeType.toLowerCase()} offers for ${bold(`${asset}/${fiat}`)} right now\\.
+No active ${tradeType.toLowerCase()} offers for ${bold(`${asset}/${fiat}`)} right now.
 
 ${bold(`${EMOJIS.CHART} Suggestions:`)}
-• Try a different trade type \\(${tradeType === 'BUY' ? 'SELL' : 'BUY'}\\)
+• Try a different trade type (${tradeType === 'BUY' ? 'SELL' : 'BUY'})
 • Check popular pairs like USDT/ETB
 • Try again in a few minutes
 
@@ -65,9 +65,9 @@ ${bold(`${EMOJIS.REFRESH} Quick switch:`)}`;
         const keyboard = createTradeTypeKeyboard('p2p', asset, fiat);
         
         if (loadingMsg?.result?.message_id) {
-          await updateLoadingMessage(env, chatId, loadingMsg.result.message_id, noDataMessage, 'MarkdownV2', keyboard);
+          await updateLoadingMessage(env, chatId, loadingMsg.result.message_id, noDataMessage, 'HTML', keyboard);
         } else {
-          await sendMessage(env, chatId, noDataMessage, 'MarkdownV2', keyboard);
+          await sendMessage(env, chatId, noDataMessage, 'HTML', keyboard);
         }
         return;
       }
@@ -82,9 +82,9 @@ ${bold(`${EMOJIS.REFRESH} Quick switch:`)}`;
 ${bold(`${EMOJIS.REFRESH} Quick Actions:`)}`;
 
       if (loadingMsg?.result?.message_id) {
-        await updateLoadingMessage(env, chatId, loadingMsg.result.message_id, enhancedResponse, 'MarkdownV2', keyboard);
+        await updateLoadingMessage(env, chatId, loadingMsg.result.message_id, enhancedResponse, 'HTML', keyboard);
       } else {
-        await sendMessage(env, chatId, enhancedResponse, 'MarkdownV2', keyboard);
+        await sendMessage(env, chatId, enhancedResponse, 'HTML', keyboard);
       }
 
       // Log successful request
@@ -95,27 +95,27 @@ ${bold(`${EMOJIS.REFRESH} Quick Actions:`)}`;
       
       let errorMessage = `${EMOJIS.WARNING} ${bold('Service Temporarily Unavailable')}
 
-Could not fetch P2P data right now\\.`;
+Could not fetch P2P data right now.`;
 
       if (apiError.message.includes('rate limit')) {
-        errorMessage += `\n\n${EMOJIS.LOADING} ${bold('Rate limited!')} Please wait a moment and try again\\.`;
+        errorMessage += `\n\n${EMOJIS.LOADING} ${bold('Rate limited!')} Please wait a moment and try again.`;
       } else if (apiError.message.includes('timeout')) {
-        errorMessage += `\n\n${EMOJIS.REFRESH} ${bold('Service timeout!')} The P2P service is busy\\. Please try again\\.`;
+        errorMessage += `\n\n${EMOJIS.REFRESH} ${bold('Service timeout!')} The P2P service is busy. Please try again.`;
       } else if (apiError.message.includes('Network error')) {
-        errorMessage += `\n\n${EMOJIS.ERROR} ${bold('Network error!')} Please check your connection and try again\\.`;
+        errorMessage += `\n\n${EMOJIS.ERROR} ${bold('Network error!')} Please check your connection and try again.`;
       } else {
-        errorMessage += `\n\n${EMOJIS.ERROR} Error: ${escapeMarkdownV2(apiError.message)}`;
+        errorMessage += `\n\n${EMOJIS.ERROR} Error: ${escapeHTML(apiError.message)}`;
       }
 
       errorMessage += `\n\n${bold(`${EMOJIS.CHART} You can try:`)}
 • Wait a few seconds and retry
 • Try a different asset/fiat pair
-• Use \`/help\` for other commands`;
+• Use <code>/help<code> for other commands`;
 
       if (loadingMsg?.result?.message_id) {
-        await updateLoadingMessage(env, chatId, loadingMsg.result.message_id, errorMessage, 'MarkdownV2');
+        await updateLoadingMessage(env, chatId, loadingMsg.result.message_id, errorMessage, 'HTML');
       } else {
-        await sendMessage(env, chatId, errorMessage, 'MarkdownV2');
+        await sendMessage(env, chatId, errorMessage, 'HTML');
       }
     }
 
@@ -124,16 +124,16 @@ Could not fetch P2P data right now\\.`;
     
     const errorMessage = `${EMOJIS.ERROR} ${bold('Command Processing Error')}
 
-An unexpected error occurred while processing your P2P request\\.
+An unexpected error occurred while processing your P2P request.
 
 ${bold(`${EMOJIS.WAVE} Please try:`)}
-• \`/help\` \\- View command help
-• \`/p2p USDT ETB BUY\` \\- Try default request
+• <code>/help<code> - View command help
+• <code>/p2p USDT ETB BUY<code> - Try default request
 • Contact support if this persists
 
-${bold('Error details:')} ${escapeMarkdownV2(error.message)}`;
+${bold('Error details:')} ${escapeHTML(error.message)}`;
 
-    await sendMessage(env, chatId, errorMessage, 'MarkdownV2');
+    await sendMessage(env, chatId, errorMessage, 'HTML');
   }
 }
 
@@ -168,12 +168,12 @@ export async function handleP2PCallback(env, callbackQuery) {
     if (!newData?.data?.data || newData.data.data.length === 0) {
       const noDataMessage = `${EMOJIS.ERROR} ${bold(`No ${tradeType} offers found`)}
 
-No active ${tradeType.toLowerCase()} offers for ${bold(`${asset}/${fiat}`)} right now\\.
+No active ${tradeType.toLowerCase()} offers for ${bold(`${asset}/${fiat}`)} right now.
 
 ${bold(`${EMOJIS.REFRESH} Try different options:`)}`;
       
       const keyboard = createTradeTypeKeyboard('p2p', asset, fiat);
-      await updateLoadingMessage(env, chatId, messageId, noDataMessage, 'MarkdownV2', keyboard);
+      await updateLoadingMessage(env, chatId, messageId, noDataMessage, 'HTML', keyboard);
       return;
     }
 
@@ -184,12 +184,12 @@ ${bold(`${EMOJIS.REFRESH} Try different options:`)}`;
 
 ${bold(`${EMOJIS.REFRESH} Quick Actions:`)}`;
 
-    await updateLoadingMessage(env, chatId, messageId, enhancedResponse, 'MarkdownV2', keyboard);
+    await updateLoadingMessage(env, chatId, messageId, enhancedResponse, 'HTML', keyboard);
 
   } catch (error) {
     console.error("P2P callback error:", error);
     
     await updateLoadingMessage(env, chatId, messageId, 
-      `${EMOJIS.ERROR} Error updating P2P data\\. Please try the command again\\.`, 'MarkdownV2');
+      `${EMOJIS.ERROR} Error updating P2P data. Please try the command again.`, 'HTML');
   }
 }

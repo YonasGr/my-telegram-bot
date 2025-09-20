@@ -4,7 +4,7 @@
 
 import { API_URLS, CACHE_TTL } from '../config/constants.js';
 import { getWithCache } from '../cache/rateLimiting.js';
-import { escapeMarkdownV2 } from '../utils/formatters.js';
+import { escapeHTML, bold } from '../utils/formatters.js';
 
 /**
  * Fetches P2P data from Binance backend
@@ -138,37 +138,37 @@ export function formatP2PResponse(data, asset, fiat, tradeType, maxResults = 5) 
   }
 
   const offers = data.data.data.slice(0, maxResults);
-  let message = `💰 *Binance P2P ${tradeType} ${asset} for ${fiat}*\n\n`;
+  let message = `💰 ${bold(`Binance P2P ${tradeType} ${asset} for ${fiat}`)}\n\n`;
 
   offers.forEach((ad, index) => {
     const advertiser = ad.advertiser;
     const adv = ad.adv;
     
     // Use proper escaping for trader names
-    const traderName = escapeMarkdownV2(advertiser.nickName);
-    const price = escapeMarkdownV2(adv.price.toString());
-    const available = escapeMarkdownV2(adv.surplusAmount.toString());
-    const minAmount = escapeMarkdownV2(adv.minSingleTransAmount.toString());
-    const maxAmount = escapeMarkdownV2(adv.maxSingleTransAmount.toString());
-    const orders = escapeMarkdownV2(advertiser.monthOrderCount.toString());
-    const successRate = escapeMarkdownV2((advertiser.monthFinishRate * 100).toFixed(1));
+    const traderName = advertiser.nickName;
+    const price = adv.price.toString();
+    const available = adv.surplusAmount.toString();
+    const minAmount = adv.minSingleTransAmount.toString();
+    const maxAmount = adv.maxSingleTransAmount.toString();
+    const orders = advertiser.monthOrderCount.toString();
+    const successRate = (advertiser.monthFinishRate * 100).toFixed(1);
 
-    message += `*${index + 1}\\. ${traderName}*\n`;
-    message += `   💵 *Price:* ${price} ${fiat}\n`;
-    message += `   📦 *Available:* ${available} ${asset}\n`;
-    message += `   📊 *Limits:* ${minAmount} \\- ${maxAmount} ${fiat}\n`;
-    message += `   ⭐️ *Orders:* ${orders} \\(${successRate}% success\\)\n`;
+    message += `${bold(`${index + 1}. ${traderName}`)}\n`;
+    message += `   💵 ${bold('Price:')} ${price} ${fiat}\n`;
+    message += `   📦 ${bold('Available:')} ${available} ${asset}\n`;
+    message += `   📊 ${bold('Limits:')} ${minAmount} - ${maxAmount} ${fiat}\n`;
+    message += `   ⭐️ ${bold('Orders:')} ${orders} (${successRate}% success)\n`;
 
     if (adv.tradeMethods?.length > 0) {
       const methods = adv.tradeMethods
-        .map(m => escapeMarkdownV2(m.tradeMethodName))
+        .map(m => m.tradeMethodName)
         .join(", ");
-      message += `   🏦 *Methods:* ${methods}\n`;
+      message += `   🏦 ${bold('Methods:')} ${methods}\n`;
     }
 
     message += "\n";
   });
 
-  message += `🔄 *Live data from Binance P2P*`;
+  message += `🔄 ${bold('Live data from Binance P2P')}`;
   return message;
 }
