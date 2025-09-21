@@ -1,5 +1,5 @@
 /**
- * Rate and Convert command handlers
+ * Rate and Convert command handlers with enhanced rate limiting
  */
 
 import { sendMessage, sendLoadingMessage, updateLoadingMessage } from '../api/telegram.js';
@@ -8,6 +8,7 @@ import { getBestP2PRate } from '../api/binanceP2P.js';
 import { validateAmount, validateCurrency, validateConversion } from '../utils/validators.js';
 import { safeFormatNumber, bold, escapeHTML, formatNumber } from '../utils/formatters.js';
 import { EMOJIS, SUPPORTED_FIATS } from '../config/constants.js';
+import { getRateLimitService } from '../services/rateLimitService.js';
 
 /**
  * Handles /rate command for currency conversion
@@ -76,28 +77,35 @@ ${bold('💡 Notes:')}
     } catch (apiError) {
       console.error("Rate API error:", apiError);
       
+      const rateLimitService = getRateLimitService(env);
+      const rateLimitMessage = await rateLimitService.getRateLimitMessage();
+      
       let errorMessage = `${EMOJIS.WARNING} *Could not fetch conversion rate*
 
 ${escapeHTML(apiError.message)}`;
 
-      if (apiError.message.includes('⚠️ CoinGecko API rate limit exceeded')) {
-        errorMessage = `${EMOJIS.WARNING} *Rate Limit Reached*
+      // Enhanced rate limit messaging
+      if (apiError.message.includes('⚠️ CoinGecko API rate limit exceeded') || 
+          apiError.message.includes('rate limit') ||
+          apiError.message.includes('Circuit breaker open') ||
+          apiError.message.includes('Service temporarily unavailable')) {
+        
+        const status = await rateLimitService.getRateLimitStatus();
+        
+        errorMessage = `${EMOJIS.WARNING} *Service Temporarily Limited*
 
-⚠️ CoinGecko API rate limit exceeded. Please try again in a minute.
+${rateLimitMessage || apiError.message}
 
-${bold('Why rate limits exist:')}
-• Ensures fair access for all users
-• Prevents service overload
-• Maintains data quality
+${bold('🔄 Recovery Status:')}
+• Service Health: ${status.isHealthy ? '✅ Good' : '⚠️ Degraded'}
+• Failures: ${status.failureCount}/5
+${status.retryAfter > 0 ? `• Retry After: ${status.retryAfter}s` : '• Ready to retry'}
 
-${bold('What you can do:')}
-• Wait 60 seconds and try again
-• Use cached data if available
-• Try simpler queries first`;
-      } else if (apiError.message.includes('rate limit')) {
-        errorMessage = `${EMOJIS.WARNING} *Service Busy*
-
-⚠️ CoinGecko API rate limit exceeded. Please try again in a minute.`;
+${bold('💡 What you can do:')}
+• Wait ${status.retryAfter || 60} seconds and try again
+• Try popular pairs like BTC/USD, ETH/USD
+• Use cached data when available
+• Check network connection`;
       }
 
       errorMessage += `

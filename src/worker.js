@@ -11,6 +11,7 @@ import { sendMessage, answerCallbackQuery } from './api/telegram.js';
 import { sanitizeInput } from './utils/validators.js';
 import { bold } from './utils/formatters.js';
 import { EMOJIS, API_URLS } from './config/constants.js';
+import { triggerCacheWarmingIfNeeded } from './services/cacheWarmingService.js';
 
 // Import command handlers
 import { handleStart, handleUnknownCommand, handleQuickAction } from './commands/start.js';
@@ -107,6 +108,9 @@ export default {
 
       // Route commands to appropriate handlers
       await routeCommand(env, chatId, command, args, { userId, userName });
+
+      // Trigger background cache warming if needed (non-blocking)
+      triggerCacheWarmingIfNeeded(env);
 
       return new Response('ok');
 
