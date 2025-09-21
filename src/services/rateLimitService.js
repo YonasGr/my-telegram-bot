@@ -98,21 +98,21 @@ export class RateLimitService {
    * Calculate exponential backoff delay with jitter
    */
   calculateBackoffDelay(attempt) {
-    const baseDelay = RATE_LIMIT.COINGECKO_INITIAL_BACKOFF;
+    const baseDelay = RATE_LIMIT.COINLAYER_INITIAL_BACKOFF;
     const exponentialDelay = Math.min(
-      baseDelay * Math.pow(RATE_LIMIT.COINGECKO_BACKOFF_MULTIPLIER, attempt),
-      RATE_LIMIT.COINGECKO_MAX_BACKOFF
+      baseDelay * Math.pow(RATE_LIMIT.COINLAYER_BACKOFF_MULTIPLIER, attempt),
+      RATE_LIMIT.COINLAYER_MAX_BACKOFF
     );
     
     // Add jitter to prevent thundering herd
-    const jitter = Math.random() * RATE_LIMIT.COINGECKO_JITTER_MAX;
+    const jitter = Math.random() * RATE_LIMIT.COINLAYER_JITTER_MAX;
     return exponentialDelay + jitter;
   }
 
   /**
    * Execute API request with exponential backoff retry
    */
-  async executeWithRetry(requestFn, maxRetries = RATE_LIMIT.COINGECKO_MAX_RETRIES) {
+  async executeWithRetry(requestFn, maxRetries = RATE_LIMIT.COINLAYER_MAX_RETRIES) {
     let lastError;
     
     for (let attempt = 0; attempt < maxRetries; attempt++) {
@@ -242,12 +242,12 @@ export class RateLimitService {
         const batchResult = await this.deduplicateRequest(batchKey, async () => {
           const coinIdString = batch.join(',');
           const vsCurrencyString = vsCurrencies.join(',');
-          const endpoint = `/simple/price?ids=${coinIdString}&vs_currencies=${vsCurrencyString}&include_24hr_change=true`;
+          const endpoint = `/live?symbols=${coinIdString}&target=${vsCurrencyString}&include_24hr_change=true`;
           
           return await this.executeWithCircuitBreaker(endpoint, async () => {
             // Import the function dynamically to avoid circular imports
-            const { fetchCoinGeckoData } = await import('../api/coinGecko.js');
-            return await this.executeRequest(() => fetchCoinGeckoData(endpoint));
+            const { fetchCoinlayerData } = await import('../api/coinlayer.js');
+            return await this.executeRequest(() => fetchCoinlayerData('live', { symbols: coinIdString }));
           });
         });
         
@@ -299,8 +299,8 @@ export class RateLimitService {
   }
 
   // This method needs to be implemented with the actual fetch logic
-  async fetchCoinGeckoData(endpoint) {
-    throw new Error('fetchCoinGeckoData must be implemented by the calling code');
+  async fetchCoinlayerData(endpoint, params = {}) {
+    throw new Error('fetchCoinlayerData must be implemented by the calling code');
   }
 }
 
