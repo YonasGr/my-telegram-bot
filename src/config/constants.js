@@ -13,6 +13,9 @@ export const SUPPORTED_ASSETS = ['USDT', 'BTC', 'ETH', 'BNB', 'BUSD'];
 
 export const SUPPORTED_FIATS = ['ETB', 'USD', 'EUR', 'GBP', 'NGN', 'KES', 'GHS'];
 
+// Popular trading pairs that benefit from extended caching and priority handling
+export const POPULAR_COINS = ['bitcoin', 'ethereum', 'tether', 'binancecoin', 'cardano', 'solana', 'dogecoin'];
+
 export const TRADE_TYPES = ['BUY', 'SELL'];
 
 export const CACHE_TTL = {
@@ -20,13 +23,28 @@ export const CACHE_TTL = {
   COIN_DATA: 3600,    // 1 hour
   CHART_DATA: 3600,   // 1 hour
   SIMPLE_PRICES: 60,  // 1 minute
-  P2P_DATA: 300       // 5 minutes
+  P2P_DATA: 300,      // 5 minutes
+  // Enhanced caching for popular pairs
+  POPULAR_PRICES: 300, // 5 minutes for BTC, ETH, USDT, etc.
+  FALLBACK_PRICES: 3600, // 1 hour fallback cache
+  RATE_LIMIT_STATUS: 300, // 5 minutes for rate limit tracking
+  REQUEST_QUEUE: 60   // 1 minute for queue status
 };
 
 export const RATE_LIMIT = {
   DEFAULT_LIMIT: 10,
   DEFAULT_WINDOW: 60, // seconds
-  COINGECKO_DELAY: 5000 // milliseconds delay between CoinGecko requests
+  COINGECKO_DELAY: 5000, // milliseconds delay between CoinGecko requests
+  // Enhanced rate limiting configuration
+  COINGECKO_MAX_RETRIES: 5,
+  COINGECKO_INITIAL_BACKOFF: 1000, // 1 second
+  COINGECKO_MAX_BACKOFF: 32000, // 32 seconds
+  COINGECKO_BACKOFF_MULTIPLIER: 2,
+  COINGECKO_JITTER_MAX: 1000, // max random jitter in ms
+  QUEUE_MAX_SIZE: 100,
+  QUEUE_TIMEOUT: 30000, // 30 seconds max wait in queue
+  CIRCUIT_BREAKER_FAILURE_THRESHOLD: 5,
+  CIRCUIT_BREAKER_RECOVERY_TIMEOUT: 60000 // 1 minute
 };
 
 export const CHART_CONFIG = {
