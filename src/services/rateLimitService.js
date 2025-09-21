@@ -226,7 +226,7 @@ export class RateLimitService {
    */
   async batchPriceRequests(coinIds, vsCurrencies = ['usd']) {
     // Group requests to optimize API calls
-    const batchSize = 10; // CoinGecko limit
+    const batchSize = 10; // Batch size for requests
     const batches = [];
     
     for (let i = 0; i < coinIds.length; i += batchSize) {

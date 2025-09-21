@@ -236,7 +236,7 @@ export async function getCoinData(env, coinId) {
       throw new Error("Cryptocurrency not found");
     }
 
-    // Create a structure similar to what CoinGecko provided
+    // Create a structure similar to what the previous API provided
     return {
       id: coinId,
       symbol: coinInfo.symbol,

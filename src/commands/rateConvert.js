@@ -313,7 +313,7 @@ ${escapeHTML(apiError.message)}`;
       if (apiError.message.includes('⚠️ Coinlayer API rate limit exceeded') || apiError.message.includes('rate limit')) {
         errorMessage = `${EMOJIS.WARNING} *Rate Limit Reached*
 
-⚠️ CoinGecko API rate limit exceeded. Please try again in a minute.
+⚠️ Coinlayer API rate limit exceeded. Please try again in a minute.
 
 ${bold('Tip:')} Rate limits help keep the service fast and reliable for everyone.`;
       }
