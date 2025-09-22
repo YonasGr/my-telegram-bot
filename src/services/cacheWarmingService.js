@@ -4,7 +4,7 @@
  */
 
 import { POPULAR_COINS, CACHE_TTL } from '../config/constants.js';
-import { getMultipleCoinPrices } from '../api/coinGecko.js';
+import { getMultipleCoinPrices } from '../api/coinlayer.js';
 import { getRateLimitService } from './rateLimitService.js';
 
 /**

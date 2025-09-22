@@ -4,7 +4,7 @@
 
 export const API_URLS = {
   BINANCE_BACKEND: 'https://my-telegram-bot-backend.onrender.com/binancep2p',
-  COINGECKO: 'https://api.coingecko.com/api/v3',
+  COINLAYER: 'http://api.coinlayer.com/api',
   CHART_IMAGE: 'https://quickchart.io/chart',
   TELEGRAM_BOT: 'https://api.telegram.org/bot'
 };
@@ -34,13 +34,13 @@ export const CACHE_TTL = {
 export const RATE_LIMIT = {
   DEFAULT_LIMIT: 10,
   DEFAULT_WINDOW: 60, // seconds
-  COINGECKO_DELAY: 5000, // milliseconds delay between CoinGecko requests
+  COINLAYER_DELAY: 1000, // milliseconds delay between Coinlayer requests (1000 calls/month free tier)
   // Enhanced rate limiting configuration
-  COINGECKO_MAX_RETRIES: 5,
-  COINGECKO_INITIAL_BACKOFF: 1000, // 1 second
-  COINGECKO_MAX_BACKOFF: 32000, // 32 seconds
-  COINGECKO_BACKOFF_MULTIPLIER: 2,
-  COINGECKO_JITTER_MAX: 1000, // max random jitter in ms
+  COINLAYER_MAX_RETRIES: 5,
+  COINLAYER_INITIAL_BACKOFF: 1000, // 1 second
+  COINLAYER_MAX_BACKOFF: 32000, // 32 seconds
+  COINLAYER_BACKOFF_MULTIPLIER: 2,
+  COINLAYER_JITTER_MAX: 1000, // max random jitter in ms
   QUEUE_MAX_SIZE: 100,
   QUEUE_TIMEOUT: 30000, // 30 seconds max wait in queue
   CIRCUIT_BREAKER_FAILURE_THRESHOLD: 5,
