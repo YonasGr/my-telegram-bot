@@ -1,6 +1,7 @@
 // server.js
 import express from "express";
 import fetch from "node-fetch";
+import { generateChartImageUrl, generateCandlestickChart, generateComparisonChart } from "./charts.js";
 
 const app = express();
 
@@ -126,6 +127,92 @@ const validateP2PRequest = (req) => {
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'OK', timestamp: new Date().toISOString() });
+});
+// Chart generation endpoints
+app.get('/api/chart', async (req, res) => {
+  try {
+    const { prices, coinName, days = 7, width = 800, height = 400, backgroundColor = 'rgba(17,17,17,0.9)', lineColor = '#00ff88', fillColor = 'rgba(0, 255, 136, 0.1)' } = req.query;
+    
+    if (!prices) {
+      return res.status(400).json({ error: 'Price data is required' });
+    }
+    
+    let pricesArray;
+    try {
+      pricesArray = JSON.parse(prices);
+    } catch (e) {
+      return res.status(400).json({ error: 'Invalid price data format' });
+    }
+    
+    const chartUrl = generateChartImageUrl(pricesArray, coinName || 'Cryptocurrency', parseInt(days), {
+      width: parseInt(width),
+      height: parseInt(height),
+      backgroundColor,
+      lineColor,
+      fillColor
+    });
+    
+    res.json({ success: true, chartUrl });
+  } catch (error) {
+    console.error('Chart generation error:', error);
+    res.status(500).json({ error: 'Failed to generate chart', message: error.message });
+  }
+});
+
+app.get('/api/candlestick-chart', async (req, res) => {
+  try {
+    const { ohlcData, coinName, days = 7, width = 800, height = 400, backgroundColor = 'rgba(17,17,17,0.9)' } = req.query;
+    
+    if (!ohlcData) {
+      return res.status(400).json({ error: 'OHLC data is required' });
+    }
+    
+    let ohlcArray;
+    try {
+      ohlcArray = JSON.parse(ohlcData);
+    } catch (e) {
+      return res.status(400).json({ error: 'Invalid OHLC data format' });
+    }
+    
+    const chartUrl = generateCandlestickChart(ohlcArray, coinName || 'Cryptocurrency', parseInt(days), {
+      width: parseInt(width),
+      height: parseInt(height),
+      backgroundColor
+    });
+    
+    res.json({ success: true, chartUrl });
+  } catch (error) {
+    console.error('Candlestick chart generation error:', error);
+    res.status(500).json({ error: 'Failed to generate candlestick chart', message: error.message });
+  }
+});
+
+app.get('/api/comparison-chart', async (req, res) => {
+  try {
+    const { coinDataArray, days = 7, width = 800, height = 400, backgroundColor = 'rgba(17,17,17,0.9)' } = req.query;
+    
+    if (!coinDataArray) {
+      return res.status(400).json({ error: 'Coin data array is required' });
+    }
+    
+    let coinArray;
+    try {
+      coinArray = JSON.parse(coinDataArray);
+    } catch (e) {
+      return res.status(400).json({ error: 'Invalid coin data format' });
+    }
+    
+    const chartUrl = generateComparisonChart(coinArray, parseInt(days), {
+      width: parseInt(width),
+      height: parseInt(height),
+      backgroundColor
+    });
+    
+    res.json({ success: true, chartUrl });
+  } catch (error) {
+    console.error('Comparison chart generation error:', error);
+    res.status(500).json({ error: 'Failed to generate comparison chart', message: error.message });
+  }
 });
 
 // Main P2P endpoint

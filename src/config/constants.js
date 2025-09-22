@@ -3,6 +3,7 @@
  */
 
 export const API_URLS = {
+  BACKEND_BASE: 'https://my-telegram-bot-backend.onrender.com',
   BINANCE_BACKEND: 'https://my-telegram-bot-backend.onrender.com/binancep2p',
   COINLAYER: 'http://api.coinlayer.com/api',
   CHART_IMAGE: 'https://quickchart.io/chart',
