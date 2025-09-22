@@ -31,8 +31,8 @@ describe('Enhanced Rate Limiting Service', () => {
   test('should determine cache TTL based on coin popularity', () => {
     const service = new RateLimitService(mockEnv);
     
-    // Popular coin should get longer cache
-    const btcTTL = service.getCacheTTLForCoin('bitcoin');
+    // Popular coin should get longer cache (using CoinMarketCap ID for Bitcoin)
+    const btcTTL = service.getCacheTTLForCoin('1'); // Bitcoin CoinMarketCap ID
     expect(btcTTL).toBe(300); // POPULAR_PRICES TTL
     
     // Unknown coin should get shorter cache

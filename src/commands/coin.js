@@ -3,7 +3,7 @@
  */
 
 import { sendMessage, sendPhoto, sendLoadingMessage, updateLoadingMessage, createTimeframeKeyboard } from '../api/telegram.js';
-import { searchCoinSymbol, getCoinData, getCoinMarketChart } from '../api/coinlayer.js';
+import { searchCoinSymbol, getCoinData, getCoinMarketChart } from '../api/coinmarketcap.js';
 import { generateChartImageUrl } from '../api/charts.js';
 import { validateCoinSymbol } from '../utils/validators.js';
 import { 
@@ -44,7 +44,7 @@ export async function handleCoin(env, chatId, args) {
 • Use coin name or symbol
 • Charts support 1d/7d/30d timeframes
 • Click chart buttons for different periods
-• All data is live from Coinlayer
+• All data is live from CoinMarketCap
 
 ${validation.error}`;
 
@@ -142,12 +142,12 @@ ${bold('📈 Additional Data:')}`;
       const finalMessage = `${coinMessage}
 
 ${bold(`${EMOJIS.LINK} Links:`)}
-• [Coinlayer Data](https://coinlayer.com/)${websiteLink}
+• [CoinMarketCap Data](https://coinmarketcap.com/)${websiteLink}
 
 ${bold(`${EMOJIS.CHART} Interactive Chart (${CHART_CONFIG.DEFAULT_DAYS} days)`)}
 ${EMOJIS.REFRESH} ${bold('Use buttons below to change timeframe')}
 
-${EMOJIS.REFRESH} ${bold('Live data from Coinlayer')}`;
+${EMOJIS.REFRESH} ${bold('Live data from CoinMarketCap')}`;
 
       // Create timeframe selection keyboard
       const keyboard = createTimeframeKeyboard('coin', coinData.id);
@@ -169,10 +169,10 @@ ${EMOJIS.REFRESH} ${bold('Live data from Coinlayer')}`;
       
       let errorMessage = `${EMOJIS.WARNING} ${bold('Could not fetch coin data')}`;
 
-      if (apiError.message.includes('⚠️ Coinlayer API rate limit exceeded')) {
+      if (apiError.message.includes('⚠️ CoinMarketCap API rate limit exceeded')) {
         errorMessage += `\n\n${apiError.message}\n\n${bold('Please wait about a minute before trying again.')}\n\n${EMOJIS.LOADING} ${bold('Rate limiting helps keep the service available for everyone.')}`;
       } else if (apiError.message.includes('rate limit')) {
-        errorMessage += `\n\n⚠️ Coinlayer API rate limit exceeded. Please try again in a minute.`;
+        errorMessage += `\n\n⚠️ CoinMarketCap API rate limit exceeded. Please try again in a minute.`;
       } else if (apiError.message.includes('not found')) {
         errorMessage += `\n\n${EMOJIS.ERROR} ${bold('Cryptocurrency not found!')} Please check the name/symbol and try again.`;
       } else if (apiError.message.includes('Network error')) {
@@ -263,7 +263,7 @@ ${bold('💱 24h Volume:')} $${safeFormatLargeNumber(volume24h)}
 ${bold(`${EMOJIS.CHART} Interactive Chart (${days} days)`)}
 ${EMOJIS.REFRESH} ${bold('Use buttons below to change timeframe')}
 
-${EMOJIS.REFRESH} ${bold('Live data from Coinlayer')}`;
+${EMOJIS.REFRESH} ${bold('Live data from CoinMarketCap')}`;
 
     // Update keyboard with current selection
     const keyboard = createTimeframeKeyboard('coin', coinId);

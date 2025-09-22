@@ -98,21 +98,21 @@ export class RateLimitService {
    * Calculate exponential backoff delay with jitter
    */
   calculateBackoffDelay(attempt) {
-    const baseDelay = RATE_LIMIT.COINLAYER_INITIAL_BACKOFF;
+    const baseDelay = RATE_LIMIT.COINMARKETCAP_INITIAL_BACKOFF;
     const exponentialDelay = Math.min(
-      baseDelay * Math.pow(RATE_LIMIT.COINLAYER_BACKOFF_MULTIPLIER, attempt),
-      RATE_LIMIT.COINLAYER_MAX_BACKOFF
+      baseDelay * Math.pow(RATE_LIMIT.COINMARKETCAP_BACKOFF_MULTIPLIER, attempt),
+      RATE_LIMIT.COINMARKETCAP_MAX_BACKOFF
     );
     
     // Add jitter to prevent thundering herd
-    const jitter = Math.random() * RATE_LIMIT.COINLAYER_JITTER_MAX;
+    const jitter = Math.random() * RATE_LIMIT.COINMARKETCAP_JITTER_MAX;
     return exponentialDelay + jitter;
   }
 
   /**
    * Execute API request with exponential backoff retry
    */
-  async executeWithRetry(requestFn, maxRetries = RATE_LIMIT.COINLAYER_MAX_RETRIES) {
+  async executeWithRetry(requestFn, maxRetries = RATE_LIMIT.COINMARKETCAP_MAX_RETRIES) {
     let lastError;
     
     for (let attempt = 0; attempt < maxRetries; attempt++) {
@@ -246,8 +246,11 @@ export class RateLimitService {
           
           return await this.executeWithCircuitBreaker(endpoint, async () => {
             // Import the function dynamically to avoid circular imports
-            const { fetchCoinlayerData } = await import('../api/coinlayer.js');
-            return await this.executeRequest(() => fetchCoinlayerData('live', { symbols: coinIdString }));
+            const { fetchCoinMarketCapData } = await import('../api/coinmarketcap.js');
+            return await this.executeRequest(() => fetchCoinMarketCapData('v1/cryptocurrency/quotes/latest', { 
+              id: coinIdString,
+              convert: vsCurrencyString.toUpperCase()
+            }));
           });
         });
         
@@ -299,8 +302,8 @@ export class RateLimitService {
   }
 
   // This method needs to be implemented with the actual fetch logic
-  async fetchCoinlayerData(endpoint, params = {}) {
-    throw new Error('fetchCoinlayerData must be implemented by the calling code');
+  async fetchCoinMarketCapData(endpoint, params = {}) {
+    throw new Error('fetchCoinMarketCapData must be implemented by the calling code');
   }
 }
 
