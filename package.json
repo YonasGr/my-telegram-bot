@@ -32,9 +32,12 @@
 	},
 	"homepage": "https://github.com/YonasGr/my-telegram-bot#readme",
 	"dependencies": {
+		"canvas": "^3.2.0",
+		"chartjs-node-canvas": "^5.0.0",
 		"cors": "^2.8.5",
 		"express": "^5.1.0",
 		"express-rate-limit": "^8.1.0",
-		"node-fetch": "^3.3.2"
+		"node-fetch": "^3.3.2",
+		"technicalindicators": "^3.1.0"
 	}
 }

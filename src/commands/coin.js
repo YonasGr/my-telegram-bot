@@ -3,8 +3,8 @@
  */
 
 import { sendMessage, sendPhoto, sendLoadingMessage, updateLoadingMessage, createTimeframeKeyboard } from '../api/telegram.js';
-import { searchCoinSymbol, getCoinData, getCoinMarketChart } from '../api/coinlayer.js';
-import { generateChartImageUrl } from '../api/charts.js';
+import { searchCoinSymbol, getCoinData, getCoinMarketChart } from '../api/coinmarketcap.js';
+import { generateProfessionalChart, generateFallbackChart, saveChartToFile } from '../api/professionalCharts.js';
 import { validateCoinSymbol } from '../utils/validators.js';
 import { 
   safeFormatNumber, 
@@ -42,9 +42,10 @@ export async function handleCoin(env, chatId, args) {
 
 *💡 Tips:*
 • Use coin name or symbol
-• Charts support 1d/7d/30d timeframes
+• Professional charts with candlesticks, MA20/50, RSI
+• Charts support 1d/7d/30d timeframes  
 • Click chart buttons for different periods
-• All data is live from Coinlayer
+• All data is live from CoinMarketCap
 
 ${validation.error}`;
 
@@ -97,13 +98,29 @@ ${bold(`${EMOJIS.CHART} Suggestions:`)}
       const marketCapRank = detailedData.market_cap_rank;
       const circulatingSupply = marketData.circulating_supply;
 
-      // Generate chart
-      const chartUrl = generateChartImageUrl(
-        marketChart.prices, 
-        coinData.name, 
-        CHART_CONFIG.DEFAULT_DAYS,
-        { showTitle: true, showGrid: true }
-      );
+      // Generate professional chart
+      let chartBuffer;
+      try {
+        // Try to generate professional chart with indicators
+        chartBuffer = await generateProfessionalChart(marketChart, coinData.name, {
+          timeframe: '4h',
+          days: CHART_CONFIG.DEFAULT_DAYS,
+          theme: 'dark',
+          showMA: true,
+          showRSI: true,
+          showMACD: true,
+          showVolume: true
+        });
+      } catch (chartError) {
+        console.log('Professional chart failed, using fallback:', chartError.message);
+        // Fallback to simple line chart
+        chartBuffer = await generateFallbackChart(marketChart.prices, coinData.name, {
+          theme: 'dark'
+        });
+      }
+
+      // Save chart to temporary file
+      const chartPath = await saveChartToFile(chartBuffer, coinData.symbol);
 
       // Create comprehensive coin information message
       let coinMessage = `${EMOJIS.COIN} ${bold(`${detailedData.name} (${coinData.symbol.toUpperCase()})`)}
@@ -142,25 +159,33 @@ ${bold('📈 Additional Data:')}`;
       const finalMessage = `${coinMessage}
 
 ${bold(`${EMOJIS.LINK} Links:`)}
-• [Coinlayer Data](https://coinlayer.com/)${websiteLink}
+• [CoinMarketCap](https://coinmarketcap.com/)${websiteLink}
 
-${bold(`${EMOJIS.CHART} Interactive Chart (${CHART_CONFIG.DEFAULT_DAYS} days)`)}
+${bold(`${EMOJIS.CHART} Professional Chart (${CHART_CONFIG.DEFAULT_DAYS} days)`)}
+${EMOJIS.REFRESH} ${bold('4h candles with MA20/50, RSI, Volume')}
 ${EMOJIS.REFRESH} ${bold('Use buttons below to change timeframe')}
 
-${EMOJIS.REFRESH} ${bold('Live data from Coinlayer')}`;
+${EMOJIS.REFRESH} ${bold('Live data from CoinMarketCap')}`;
 
       // Create timeframe selection keyboard
       const keyboard = createTimeframeKeyboard('coin', coinData.id);
 
       // Send chart with comprehensive information
+      const fs = await import('fs');
+      const chartDataBuffer = await fs.promises.readFile(chartPath);
+      
       if (loadingMsg?.result?.message_id) {
         // Update loading message to final result, then send chart
         await updateLoadingMessage(env, chatId, loadingMsg.result.message_id, 
           `${EMOJIS.SUCCESS} Data fetched\\! Sending chart...`, 'HTML');
-        await sendPhoto(env, chatId, chartUrl, finalMessage, 'HTML', keyboard);
+        
+        await sendPhoto(env, chatId, chartDataBuffer, finalMessage, 'HTML', keyboard);
       } else {
-        await sendPhoto(env, chatId, chartUrl, finalMessage, 'HTML', keyboard);
+        await sendPhoto(env, chatId, chartDataBuffer, finalMessage, 'HTML', keyboard);
       }
+      
+      // Clean up temporary file
+      await fs.promises.unlink(chartPath);
 
       console.log(`Coin data sent successfully for: ${coinData.name} (${coinData.symbol})`);
 
@@ -169,14 +194,16 @@ ${EMOJIS.REFRESH} ${bold('Live data from Coinlayer')}`;
       
       let errorMessage = `${EMOJIS.WARNING} ${bold('Could not fetch coin data')}`;
 
-      if (apiError.message.includes('⚠️ Coinlayer API rate limit exceeded')) {
+      if (apiError.message.includes('⚠️ CoinMarketCap rate limit exceeded')) {
         errorMessage += `\n\n${apiError.message}\n\n${bold('Please wait about a minute before trying again.')}\n\n${EMOJIS.LOADING} ${bold('Rate limiting helps keep the service available for everyone.')}`;
       } else if (apiError.message.includes('rate limit')) {
-        errorMessage += `\n\n⚠️ Coinlayer API rate limit exceeded. Please try again in a minute.`;
+        errorMessage += `\n\n⚠️ CoinMarketCap API rate limit exceeded. Please try again in a minute.`;
       } else if (apiError.message.includes('not found')) {
         errorMessage += `\n\n${EMOJIS.ERROR} ${bold('Cryptocurrency not found!')} Please check the name/symbol and try again.`;
       } else if (apiError.message.includes('Network error')) {
-        errorMessage += `\n\n${EMOJIS.ERROR} ${bold('Network error!')} Could not connect to data service.`;
+        errorMessage += `\n\n${EMOJIS.ERROR} ${bold('Network error!')} Could not connect to CoinMarketCap.`;
+      } else if (apiError.message.includes('COINMARKETCAP_API_KEY not configured')) {
+        errorMessage += `\n\n${EMOJIS.ERROR} ${bold('Configuration error!')} CoinMarketCap API key not found.`;
       } else {
         errorMessage += `\n\n${EMOJIS.ERROR} ${escapeHTML(apiError.message)}`;
       }
@@ -237,13 +264,27 @@ export async function handleCoinCallback(env, callbackQuery) {
       throw new Error('Could not fetch updated coin data');
     }
 
-    // Generate new chart
-    const chartUrl = generateChartImageUrl(
-      marketChart.prices, 
-      coinData.name, 
-      daysInt,
-      { showTitle: true, showGrid: true }
-    );
+    // Generate new professional chart
+    let callbackChartBuffer;
+    try {
+      callbackChartBuffer = await generateProfessionalChart(marketChart, coinData.name, {
+        timeframe: daysInt <= 7 ? '1h' : '4h',
+        days: daysInt,
+        theme: 'dark',
+        showMA: true,
+        showRSI: true,
+        showMACD: daysInt <= 30, // Show MACD only for shorter timeframes
+        showVolume: true
+      });
+    } catch (chartError) {
+      console.log('Professional chart failed, using fallback:', chartError.message);
+      callbackChartBuffer = await generateFallbackChart(marketChart.prices, coinData.name, {
+        theme: 'dark'
+      });
+    }
+
+    // Save chart to temporary file
+    const chartPath = await saveChartToFile(callbackChartBuffer, coinData.symbol);
 
     // Extract market data for updated message
     const marketData = detailedData.market_data;
@@ -260,16 +301,22 @@ ${bold('📈 24h Change:')} ${safeFormatPercentageChange(priceChange24h)}
 ${bold('📊 Market Cap:')} $${safeFormatLargeNumber(marketCap)}
 ${bold('💱 24h Volume:')} $${safeFormatLargeNumber(volume24h)}
 
-${bold(`${EMOJIS.CHART} Interactive Chart (${days} days)`)}
+${bold(`${EMOJIS.CHART} Professional Chart (${days} days)`)}
+${EMOJIS.REFRESH} ${bold(daysInt <= 7 ? '1h candles' : '4h candles')} with MA20/50, RSI${daysInt <= 30 ? ', MACD' : ''}, Volume
 ${EMOJIS.REFRESH} ${bold('Use buttons below to change timeframe')}
 
-${EMOJIS.REFRESH} ${bold('Live data from Coinlayer')}`;
+${EMOJIS.REFRESH} ${bold('Live data from CoinMarketCap')}`;
 
     // Update keyboard with current selection
     const keyboard = createTimeframeKeyboard('coin', coinId);
 
     // Send new photo with updated caption
-    await sendPhoto(env, chatId, chartUrl, updatedMessage, 'HTML', keyboard);
+    const fs = await import('fs');
+    const chartBuffer = await fs.promises.readFile(chartPath);
+    await sendPhoto(env, chatId, chartBuffer, updatedMessage, 'HTML', keyboard);
+    
+    // Clean up temporary file
+    await fs.promises.unlink(chartPath);
 
   } catch (error) {
     console.error("Coin callback error:", error);

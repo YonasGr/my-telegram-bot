@@ -1,8 +1,8 @@
 # 🚀 Cloudflare Worker Telegram Bot
 
-[![Telegram](https://img.shields.io/badge/Telegram-Bot-blue?logo=telegram)](https://t.me/x_Jonah)  [![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers-F38020?logo=cloudflare&logoColor=white)](https://workers.cloudflare.com/)  [![Node.js](https://img.shields.io/badge/Node.js-18.x-green?logo=node.js&logoColor=white)](https://nodejs.org/)  [![CoinGecko](https://img.shields.io/badge/API-CoinGecko-7289DA?logo=coingecko)](https://www.coingecko.com/)  [![Binance](https://img.shields.io/badge/API-Binance-FCD535?logo=binance&logoColor=black)](https://binance.com)  [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Telegram](https://img.shields.io/badge/Telegram-Bot-blue?logo=telegram)](https://t.me/x_Jonah)  [![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers-F38020?logo=cloudflare&logoColor=white)](https://workers.cloudflare.com/)  [![Node.js](https://img.shields.io/badge/Node.js-18.x-green?logo=node.js&logoColor=white)](https://nodejs.org/)  [![CoinMarketCap](https://img.shields.io/badge/API-CoinMarketCap-17A2B8?logo=coinmarketcap)](https://coinmarketcap.com/)  [![Binance](https://img.shields.io/badge/API-Binance-FCD535?logo=binance&logoColor=black)](https://binance.com)  [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-A **serverless Telegram bot** built with **Cloudflare Workers** that provides real-time cryptocurrency data, Binance P2P trading rates, and CoinGecko market insights — all directly inside Telegram.
+A **serverless Telegram bot** built with **Cloudflare Workers** that provides real-time cryptocurrency data, Binance P2P trading rates, and CoinMarketCap market insights with **professional candlestick charts** — all directly inside Telegram.
 
 
 ## ✨ Features
@@ -14,16 +14,16 @@ A **serverless Telegram bot** built with **Cloudflare Workers** that provides re
   Convert between crypto ↔ crypto or crypto ↔ fiat with live market data.
 
 - 🪙 **Coin Information**  
-  Fetch detailed coin data (price, volume, market cap, supply) with **auto-generated price charts**.
+  Fetch detailed coin data (price, volume, market cap, supply) with **professional candlestick charts**, moving averages (MA20/50), RSI, MACD, and volume indicators.
 
 - 💰 **Sell Estimator**  
   Quickly calculate how much ETB you’ll get when selling crypto.
 
 - ⚡ **Rate Limiting & Caching**  
-  Prevents abuse and improves performance with smart caching.
+  Prevents abuse and improves performance with smart caching and secure API key management.
 
-- 🖼 **Charts & Images**  
-  Generates clean, responsive price charts using [QuickChart.io](https://quickchart.io/).
+- 🖼 **Professional Charts**  
+  Generates high-quality PNG charts with candlesticks, technical indicators, and customizable timeframes using advanced charting libraries.
 
 ---
 
@@ -47,7 +47,7 @@ A **serverless Telegram bot** built with **Cloudflare Workers** that provides re
 ├── src/
 │   ├── utils/              # Utility functions (formatting, escaping, etc.)
 │   ├── cache/              # Caching & rate-limiting helpers
-│   ├── api/                # API wrappers (Binance, CoinGecko, QuickChart)
+│   ├── api/                # API wrappers (Binance, CoinMarketCap, Professional Charts)
 │   ├── commands/           # Telegram command handlers
 │   └── worker.js           # Main Cloudflare Worker entry
 ├── wrangler.toml           # Cloudflare config
@@ -65,6 +65,7 @@ Set these in your Cloudflare Worker environment:
 | Variable | Description |
 |----------|-------------|
 | `TELEGRAM_BOT_TOKEN` | Your Telegram bot token from [BotFather](https://t.me/BotFather) |
+| `COINMARKETCAP_API_KEY` | Your CoinMarketCap Pro API key from [CoinMarketCap](https://pro.coinmarketcap.com/) |
 | `BOT_CACHE` | Cloudflare KV namespace binding for caching API responses |
 
 ---
@@ -128,8 +129,9 @@ Set these in your Cloudflare Worker environment:
 ## 📌 Notes
 
 * Binance P2P requests are proxied through a backend to bypass Cloudflare Worker restrictions.
-* CoinGecko API has strict **rate limits** → caching is implemented to prevent errors.
-* Charts are generated dynamically via **QuickChart.io**.
+* CoinMarketCap API provides professional-grade data with **secure API key management** → caching is implemented to optimize performance.
+* Charts are generated server-side as high-quality PNG images with **candlesticks, technical indicators, and volume data**.
+* All API keys are stored securely in environment variables and never logged or exposed.
 
 ---
 

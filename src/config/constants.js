@@ -4,7 +4,7 @@
 
 export const API_URLS = {
   BINANCE_BACKEND: 'https://my-telegram-bot-backend.onrender.com/binancep2p',
-  COINLAYER: 'http://api.coinlayer.com/api',
+  COINMARKETCAP: 'https://pro-api.coinmarketcap.com',
   CHART_IMAGE: 'https://quickchart.io/chart',
   TELEGRAM_BOT: 'https://api.telegram.org/bot'
 };
@@ -34,13 +34,13 @@ export const CACHE_TTL = {
 export const RATE_LIMIT = {
   DEFAULT_LIMIT: 10,
   DEFAULT_WINDOW: 60, // seconds
-  COINLAYER_DELAY: 1000, // milliseconds delay between Coinlayer requests (1000 calls/month free tier)
+  CMC_DELAY: 200, // milliseconds delay between CMC requests (10,000 calls/month basic plan)
   // Enhanced rate limiting configuration
-  COINLAYER_MAX_RETRIES: 5,
-  COINLAYER_INITIAL_BACKOFF: 1000, // 1 second
-  COINLAYER_MAX_BACKOFF: 32000, // 32 seconds
-  COINLAYER_BACKOFF_MULTIPLIER: 2,
-  COINLAYER_JITTER_MAX: 1000, // max random jitter in ms
+  CMC_MAX_RETRIES: 3,
+  CMC_INITIAL_BACKOFF: 2000, // 2 seconds
+  CMC_MAX_BACKOFF: 16000, // 16 seconds
+  CMC_BACKOFF_MULTIPLIER: 2,
+  CMC_JITTER_MAX: 1000, // max random jitter in ms
   QUEUE_MAX_SIZE: 100,
   QUEUE_TIMEOUT: 30000, // 30 seconds max wait in queue
   CIRCUIT_BREAKER_FAILURE_THRESHOLD: 5,
@@ -50,11 +50,45 @@ export const RATE_LIMIT = {
 export const CHART_CONFIG = {
   DEFAULT_DAYS: 7,
   AVAILABLE_TIMEFRAMES: ['1', '7', '30'],
-  DEFAULT_WIDTH: 800,
-  DEFAULT_HEIGHT: 400,
-  BACKGROUND_COLOR: 'rgba(17,17,17,0.9)',
+  DEFAULT_WIDTH: 1200,
+  DEFAULT_HEIGHT: 600,
+  BACKGROUND_COLOR: 'rgba(17,17,17,0.95)',
   LINE_COLOR: '#00ff88',
-  FILL_COLOR: 'rgba(0, 255, 136, 0.1)'
+  FILL_COLOR: 'rgba(0, 255, 136, 0.1)',
+  // Professional charting options
+  THEMES: {
+    DARK: {
+      background: '#1a1a1a',
+      text: '#ffffff',
+      grid: 'rgba(255, 255, 255, 0.1)',
+      candleUp: '#00ff88',
+      candleDown: '#ff4757',
+      volume: 'rgba(100, 149, 237, 0.7)',
+      ma20: '#ffa502',
+      ma50: '#ff6348',
+      rsi: '#70a1ff',
+      macd: '#5352ed'
+    },
+    LIGHT: {
+      background: '#ffffff',
+      text: '#333333',
+      grid: 'rgba(0, 0, 0, 0.1)',
+      candleUp: '#26a69a',
+      candleDown: '#ef5350',
+      volume: 'rgba(33, 150, 243, 0.7)',
+      ma20: '#ff9800',
+      ma50: '#f44336',
+      rsi: '#2196f3',
+      macd: '#9c27b0'
+    }
+  },
+  INDICATORS: {
+    RSI_PERIOD: 14,
+    MACD_FAST: 12,
+    MACD_SLOW: 26,
+    MACD_SIGNAL: 9,
+    MA_PERIODS: [20, 50]
+  }
 };
 
 export const PAGINATION = {

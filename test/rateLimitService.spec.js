@@ -18,14 +18,14 @@ describe('Enhanced Rate Limiting Service', () => {
     const delay2 = service.calculateBackoffDelay(1);
     const delay3 = service.calculateBackoffDelay(2);
     
-    expect(delay1).toBeGreaterThanOrEqual(1000); // Base delay + jitter
-    expect(delay1).toBeLessThanOrEqual(2000);    // Base delay + max jitter
+    expect(delay1).toBeGreaterThanOrEqual(2000); // Base delay + jitter (CMC_INITIAL_BACKOFF = 2000)
+    expect(delay1).toBeLessThanOrEqual(3000);    // Base delay + max jitter
     
-    expect(delay2).toBeGreaterThanOrEqual(2000); // 2x base + jitter
-    expect(delay2).toBeLessThanOrEqual(3000);    // 2x base + max jitter
+    expect(delay2).toBeGreaterThanOrEqual(4000); // 2x base + jitter
+    expect(delay2).toBeLessThanOrEqual(5000);    // 2x base + max jitter
     
-    expect(delay3).toBeGreaterThanOrEqual(4000); // 4x base + jitter
-    expect(delay3).toBeLessThanOrEqual(5000);    // 4x base + max jitter
+    expect(delay3).toBeGreaterThanOrEqual(8000); // 4x base + jitter
+    expect(delay3).toBeLessThanOrEqual(9000);    // 4x base + max jitter
   });
 
   test('should determine cache TTL based on coin popularity', () => {

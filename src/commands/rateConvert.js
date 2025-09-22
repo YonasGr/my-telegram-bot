@@ -3,7 +3,7 @@
  */
 
 import { sendMessage, sendLoadingMessage, updateLoadingMessage } from '../api/telegram.js';
-import { searchCoinSymbol, getMultipleCoinPrices } from '../api/coinlayer.js';
+import { searchCoinSymbol, getMultipleCoinPrices } from '../api/coinmarketcap.js';
 import { getBestP2PRate } from '../api/binanceP2P.js';
 import { validateAmount, validateCurrency, validateConversion } from '../utils/validators.js';
 import { safeFormatNumber, bold, escapeHTML, formatNumber } from '../utils/formatters.js';
@@ -38,7 +38,7 @@ ${bold('📝 Examples:')}
 
 ${bold('💡 Notes:')}
 • ETB rates use live P2P data
-• Other conversions use Coinlayer rates
+• Other conversions use CoinMarketCap rates
 • Default target currency is USD`;
 
       await sendMessage(env, chatId, helpMessage, 'HTML');
@@ -85,7 +85,7 @@ ${bold('💡 Notes:')}
 ${escapeHTML(apiError.message)}`;
 
       // Enhanced rate limit messaging
-      if (apiError.message.includes('⚠️ Coinlayer API rate limit exceeded') || 
+      if (apiError.message.includes('⚠️ CoinMarketCap rate limit exceeded') || 
           apiError.message.includes('rate limit') ||
           apiError.message.includes('Circuit breaker open') ||
           apiError.message.includes('Service temporarily unavailable')) {
@@ -191,7 +191,7 @@ ${EMOJIS.REFRESH} *Live P2P data from Binance*`;
 }
 
 /**
- * Handles standard rate conversion using Coinlayer
+ * Handles standard rate conversion using CoinMarketCap
  * @param {object} env - Cloudflare environment
  * @param {string|number} chatId - Chat ID
  * @param {number} amount - Amount to convert
@@ -234,7 +234,7 @@ ${priceChange24h !== undefined ? `• *24h Change:* ${priceChange24h >= 0 ? '�
 • *Full Name:* ${escapeHTML(coinData.name)}
 • *Symbol:* ${escapeHTML(coinData.symbol.toUpperCase())}
 
-${EMOJIS.REFRESH} *Live data from Coinlayer*`;
+${EMOJIS.REFRESH} *Live data from CoinMarketCap*`;
 
     if (loadingMsg?.result?.message_id) {
       await updateLoadingMessage(env, chatId, loadingMsg.result.message_id, rateMessage, 'HTML');
@@ -243,8 +243,8 @@ ${EMOJIS.REFRESH} *Live data from Coinlayer*`;
     }
 
   } catch (error) {
-    if (error.message.includes('⚠️ Coinlayer API rate limit exceeded') || error.message.includes('rate limit')) {
-      throw new Error('⚠️ Coinlayer API rate limit exceeded. Please try again in a minute.');
+    if (error.message.includes('⚠️ CoinMarketCap rate limit exceeded') || error.message.includes('rate limit')) {
+      throw new Error('⚠️ CoinMarketCap API rate limit exceeded. Please try again in a minute.');
     }
     throw new Error(`Standard rate error: ${error.message}`);
   }
@@ -280,7 +280,7 @@ export async function handleConvert(env, chatId, args) {
 • All parameters required
 • ETB conversions use P2P data
 • Supports crypto ↔ crypto and crypto ↔ fiat
-• Live market rates from Coinlayer & Binance`;
+• Live market rates from CoinMarketCap & Binance`;
 
       await sendMessage(env, chatId, helpMessage, 'HTML');
       return;
@@ -310,10 +310,10 @@ ${validation.errors.map(err => `• ${err}`).join('\n')}`;
 
 ${escapeHTML(apiError.message)}`;
 
-      if (apiError.message.includes('⚠️ Coinlayer API rate limit exceeded') || apiError.message.includes('rate limit')) {
+      if (apiError.message.includes('⚠️ CoinMarketCap rate limit exceeded') || apiError.message.includes('rate limit')) {
         errorMessage = `${EMOJIS.WARNING} *Rate Limit Reached*
 
-⚠️ Coinlayer API rate limit exceeded. Please try again in a minute.
+⚠️ CoinMarketCap API rate limit exceeded. Please try again in a minute.
 
 ${bold('Tip:')} Rate limits help keep the service fast and reliable for everyone.`;
       }
@@ -373,7 +373,7 @@ async function performConversion(env, chatId, amount, fromCurrency, toCurrency, 
     }
   }
 
-  // Handle Coinlayer rates
+  // Handle CoinMarketCap rates
   const coinIdsToFetch = [];
   let fromCoinId, toCoinId;
 
@@ -393,11 +393,11 @@ async function performConversion(env, chatId, amount, fromCurrency, toCurrency, 
     }
   }
 
-  // Fetch Coinlayer prices if needed
+  // Fetch CoinMarketCap prices if needed
   if (coinIdsToFetch.length > 0) {
     const prices = await getMultipleCoinPrices(env, coinIdsToFetch, ['usd']);
     if (!prices || Object.keys(prices).length === 0) {
-      throw new Error('⚠️ Coinlayer API rate limit exceeded. Please try again in a minute.');
+      throw new Error('⚠️ CoinMarketCap API rate limit exceeded. Please try again in a minute.');
     }
 
     if (fromPriceUSD === undefined) fromPriceUSD = prices[fromCoinId]?.usd;
@@ -424,8 +424,8 @@ async function performConversion(env, chatId, amount, fromCurrency, toCurrency, 
   - 1 ${toCurrency.toUpperCase()} = $${safeFormatNumber(toPriceUSD, 6)}
 
 *${EMOJIS.CHART} Data Sources:*
-${isFromP2P ? `• ${fromCurrency.toUpperCase()}: Binance P2P rates` : `• ${fromCurrency.toUpperCase()}: Coinlayer market data`}
-${isToP2P ? `• ${toCurrency.toUpperCase()}: Binance P2P rates` : `• ${toCurrency.toUpperCase()}: Coinlayer market data`}
+${isFromP2P ? `• ${fromCurrency.toUpperCase()}: Binance P2P rates` : `• ${fromCurrency.toUpperCase()}: CoinMarketCap market data`}
+${isToP2P ? `• ${toCurrency.toUpperCase()}: Binance P2P rates` : `• ${toCurrency.toUpperCase()}: CoinMarketCap market data`}
 
 ${EMOJIS.REFRESH} *Live data from multiple sources*`;
 

@@ -98,14 +98,14 @@ export class RateLimitService {
    * Calculate exponential backoff delay with jitter
    */
   calculateBackoffDelay(attempt) {
-    const baseDelay = RATE_LIMIT.COINLAYER_INITIAL_BACKOFF;
+    const baseDelay = RATE_LIMIT.CMC_INITIAL_BACKOFF;
     const exponentialDelay = Math.min(
-      baseDelay * Math.pow(RATE_LIMIT.COINLAYER_BACKOFF_MULTIPLIER, attempt),
-      RATE_LIMIT.COINLAYER_MAX_BACKOFF
+      baseDelay * Math.pow(RATE_LIMIT.CMC_BACKOFF_MULTIPLIER, attempt),
+      RATE_LIMIT.CMC_MAX_BACKOFF
     );
     
     // Add jitter to prevent thundering herd
-    const jitter = Math.random() * RATE_LIMIT.COINLAYER_JITTER_MAX;
+    const jitter = Math.random() * RATE_LIMIT.CMC_JITTER_MAX;
     return exponentialDelay + jitter;
   }
 
@@ -222,43 +222,17 @@ export class RateLimitService {
   }
 
   /**
-   * Batch multiple coin price requests efficiently
+   * Batch multiple coin price requests efficiently (now uses CoinMarketCap)
    */
   async batchPriceRequests(coinIds, vsCurrencies = ['usd']) {
-    // Group requests to optimize API calls
-    const batchSize = 10; // Batch size for requests
-    const batches = [];
+    // CMC supports batch requests natively, so this is simplified
+    const batchKey = `cmc_batch_${coinIds.join(',')}_${vsCurrencies.join(',')}`;
     
-    for (let i = 0; i < coinIds.length; i += batchSize) {
-      batches.push(coinIds.slice(i, i + batchSize));
-    }
-    
-    const results = {};
-    
-    for (const batch of batches) {
-      const batchKey = `batch_${batch.join(',')}_${vsCurrencies.join(',')}`;
-      
-      try {
-        const batchResult = await this.deduplicateRequest(batchKey, async () => {
-          const coinIdString = batch.join(',');
-          const vsCurrencyString = vsCurrencies.join(',');
-          const endpoint = `/live?symbols=${coinIdString}&target=${vsCurrencyString}&include_24hr_change=true`;
-          
-          return await this.executeWithCircuitBreaker(endpoint, async () => {
-            // Import the function dynamically to avoid circular imports
-            const { fetchCoinlayerData } = await import('../api/coinlayer.js');
-            return await this.executeRequest(() => fetchCoinlayerData('live', { symbols: coinIdString }));
-          });
-        });
-        
-        Object.assign(results, batchResult);
-      } catch (error) {
-        console.error(`Batch request failed for coins: ${batch.join(',')}`, error);
-        // Continue with other batches
-      }
-    }
-    
-    return results;
+    return this.getCachedDataWithFallback(batchKey, async () => {
+      // Use CMC's native batch support through the coinmarketcap.js module
+      const { getMultipleCoinPrices } = await import('../api/coinmarketcap.js');
+      return await getMultipleCoinPrices(this.env, coinIds, vsCurrencies);
+    }, this.getCacheTTLForCoin(coinIds[0]));
   }
 
   /**
@@ -298,10 +272,7 @@ export class RateLimitService {
     return null; // No issues
   }
 
-  // This method needs to be implemented with the actual fetch logic
-  async fetchCoinlayerData(endpoint, params = {}) {
-    throw new Error('fetchCoinlayerData must be implemented by the calling code');
-  }
+  // This method has been removed - use CoinMarketCap API directly
 }
 
 /**
