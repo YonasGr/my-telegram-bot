@@ -98,7 +98,7 @@ ${bold(`${EMOJIS.CHART} Suggestions:`)}
       const circulatingSupply = marketData.circulating_supply;
 
       // Generate chart
-      const chartUrl = generateChartImageUrl(
+      const chartUrl = await generateChartImageUrl(
         marketChart.prices, 
         coinData.name, 
         CHART_CONFIG.DEFAULT_DAYS,
@@ -238,7 +238,7 @@ export async function handleCoinCallback(env, callbackQuery) {
     }
 
     // Generate new chart
-    const chartUrl = generateChartImageUrl(
+    const chartUrl = await generateChartImageUrl(
       marketChart.prices, 
       coinData.name, 
       daysInt,
