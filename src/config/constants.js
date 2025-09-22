@@ -5,7 +5,7 @@
 export const API_URLS = {
   BACKEND_BASE: 'https://my-telegram-bot-backend.onrender.com',
   BINANCE_BACKEND: 'https://my-telegram-bot-backend.onrender.com/binancep2p',
-  COINLAYER: 'http://api.coinlayer.com/api',
+  COINMARKETCAP: 'https://pro-api.coinmarketcap.com',
   CHART_IMAGE: 'https://quickchart.io/chart',
   TELEGRAM_BOT: 'https://api.telegram.org/bot'
 };
@@ -14,8 +14,8 @@ export const SUPPORTED_ASSETS = ['USDT', 'BTC', 'ETH', 'BNB', 'BUSD'];
 
 export const SUPPORTED_FIATS = ['ETB', 'USD', 'EUR', 'GBP', 'NGN', 'KES', 'GHS'];
 
-// Popular trading pairs that benefit from extended caching and priority handling
-export const POPULAR_COINS = ['bitcoin', 'ethereum', 'tether', 'binancecoin', 'cardano', 'solana', 'dogecoin'];
+// Popular trading pairs that benefit from extended caching and priority handling (CoinMarketCap IDs)
+export const POPULAR_COINS = ['1', '1027', '825', '1839', '2010', '5426', '74'];
 
 export const TRADE_TYPES = ['BUY', 'SELL'];
 
@@ -35,13 +35,13 @@ export const CACHE_TTL = {
 export const RATE_LIMIT = {
   DEFAULT_LIMIT: 10,
   DEFAULT_WINDOW: 60, // seconds
-  COINLAYER_DELAY: 1000, // milliseconds delay between Coinlayer requests (1000 calls/month free tier)
+  COINMARKETCAP_DELAY: 250, // milliseconds delay between CoinMarketCap requests (free tier: 10,000/month)
   // Enhanced rate limiting configuration
-  COINLAYER_MAX_RETRIES: 5,
-  COINLAYER_INITIAL_BACKOFF: 1000, // 1 second
-  COINLAYER_MAX_BACKOFF: 32000, // 32 seconds
-  COINLAYER_BACKOFF_MULTIPLIER: 2,
-  COINLAYER_JITTER_MAX: 1000, // max random jitter in ms
+  COINMARKETCAP_MAX_RETRIES: 5,
+  COINMARKETCAP_INITIAL_BACKOFF: 1000, // 1 second
+  COINMARKETCAP_MAX_BACKOFF: 32000, // 32 seconds
+  COINMARKETCAP_BACKOFF_MULTIPLIER: 2,
+  COINMARKETCAP_JITTER_MAX: 1000, // max random jitter in ms
   QUEUE_MAX_SIZE: 100,
   QUEUE_TIMEOUT: 30000, // 30 seconds max wait in queue
   CIRCUIT_BREAKER_FAILURE_THRESHOLD: 5,

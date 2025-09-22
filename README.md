@@ -1,8 +1,8 @@
 # 🚀 Cloudflare Worker Telegram Bot
 
-[![Telegram](https://img.shields.io/badge/Telegram-Bot-blue?logo=telegram)](https://t.me/x_Jonah)  [![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers-F38020?logo=cloudflare&logoColor=white)](https://workers.cloudflare.com/)  [![Node.js](https://img.shields.io/badge/Node.js-18.x-green?logo=node.js&logoColor=white)](https://nodejs.org/)  [![CoinGecko](https://img.shields.io/badge/API-CoinGecko-7289DA?logo=coingecko)](https://www.coingecko.com/)  [![Binance](https://img.shields.io/badge/API-Binance-FCD535?logo=binance&logoColor=black)](https://binance.com)  [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Telegram](https://img.shields.io/badge/Telegram-Bot-blue?logo=telegram)](https://t.me/x_Jonah)  [![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers-F38020?logo=cloudflare&logoColor=white)](https://workers.cloudflare.com/)  [![Node.js](https://img.shields.io/badge/Node.js-18.x-green?logo=node.js&logoColor=white)](https://nodejs.org/)  [![CoinMarketCap](https://img.shields.io/badge/API-CoinMarketCap-1e88e5?logo=coinmarketcap)](https://coinmarketcap.com/)  [![Binance](https://img.shields.io/badge/API-Binance-FCD535?logo=binance&logoColor=black)](https://binance.com)  [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-A **serverless Telegram bot** built with **Cloudflare Workers** that provides real-time cryptocurrency data, Binance P2P trading rates, and CoinGecko market insights — all directly inside Telegram.
+A **serverless Telegram bot** built with **Cloudflare Workers** that provides real-time cryptocurrency data, Binance P2P trading rates, and CoinMarketCap market insights — all directly inside Telegram.
 
 ## 🏗️ Architecture
 
@@ -85,6 +85,7 @@ Set these in your Cloudflare Worker environment:
 | Variable | Description |
 |----------|-------------|
 | `TELEGRAM_BOT_TOKEN` | Your Telegram bot token from [BotFather](https://t.me/BotFather) |
+| `COINMARKETCAP_API_KEY` | Your CoinMarketCap API key from [CoinMarketCap API](https://coinmarketcap.com/api/) |
 | `BOT_CACHE` | Cloudflare KV namespace binding for caching API responses |
 
 ---
@@ -173,7 +174,7 @@ Set these in your Cloudflare Worker environment:
 ## 📌 Notes
 
 * Binance P2P requests are proxied through a backend to bypass Cloudflare Worker restrictions.
-* CoinGecko API has strict **rate limits** → caching is implemented to prevent errors.
+* CoinMarketCap API has **rate limits** → caching is implemented to prevent errors.
 * Charts are generated dynamically via **QuickChart.io**.
 
 ---
