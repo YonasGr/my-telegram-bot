@@ -242,15 +242,11 @@ export class RateLimitService {
         const batchResult = await this.deduplicateRequest(batchKey, async () => {
           const coinIdString = batch.join(',');
           const vsCurrencyString = vsCurrencies.join(',');
-          const endpoint = `/live?symbols=${coinIdString}&target=${vsCurrencyString}&include_24hr_change=true`;
           
-          return await this.executeWithCircuitBreaker(endpoint, async () => {
+          return await this.executeWithCircuitBreaker(`batch_${coinIdString}`, async () => {
             // Import the function dynamically to avoid circular imports
-            const { fetchCoinMarketCapData } = await import('../api/coinmarketcap.js');
-            return await this.executeRequest(() => fetchCoinMarketCapData('v1/cryptocurrency/quotes/latest', { 
-              id: coinIdString,
-              convert: vsCurrencyString.toUpperCase()
-            }));
+            const { getMultipleCoinPrices } = await import('../api/coinmarketcap.js');
+            return await this.executeRequest(() => getMultipleCoinPrices(this.env, batch, vsCurrencyString.toLowerCase().split(',')));
           });
         });
         
@@ -302,8 +298,12 @@ export class RateLimitService {
   }
 
   // This method needs to be implemented with the actual fetch logic
+  /**
+   * @deprecated Use specific proxy functions instead
+   */
   async fetchCoinMarketCapData(endpoint, params = {}) {
-    throw new Error('fetchCoinMarketCapData must be implemented by the calling code');
+    console.warn('fetchCoinMarketCapData is deprecated. Use specific proxy functions instead.');
+    throw new Error('fetchCoinMarketCapData is deprecated. Use getMultipleCoinPrices, getCoinData, or other specific functions instead.');
   }
 }
 

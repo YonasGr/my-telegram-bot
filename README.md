@@ -8,16 +8,20 @@ A **serverless Telegram bot** built with **Cloudflare Workers** that provides re
 
 This bot uses a **hybrid architecture** to ensure compatibility with Cloudflare Workers:
 
-- **Frontend (Cloudflare Workers)**: Handles Telegram webhooks, command routing, and user interactions. Maintains compatibility with the Cloudflare Workers runtime by avoiding Node.js-specific modules.
+- **Frontend (Cloudflare Workers)**: Handles Telegram webhooks, command routing, and user interactions. Pure HTTP proxy that forwards requests to backend endpoints - completely free of Node.js dependencies and process.env usage.
 
-- **Backend (Node.js Server)**: Deployed on Render, handles chart generation, data processing, and any Node.js-specific functionality. Provides REST API endpoints for the frontend.
+- **Backend (Node.js Server)**: Deployed on Render, handles CoinMarketCap API requests, chart generation, data processing, and secret management. All Node.js-specific functionality and environment variables are isolated here.
 
-- **Communication**: Frontend makes HTTP requests to backend API endpoints when needed, ensuring clean separation of concerns.
+- **Communication**: Frontend makes HTTP requests to backend API endpoints when needed, ensuring clean separation of concerns and environments.
 
 ### API Endpoints (Backend)
 - `GET /api/chart` - Generate price charts
 - `GET /api/candlestick-chart` - Generate candlestick charts  
 - `GET /api/comparison-chart` - Generate comparison charts
+- `GET /api/coin/search` - Search for coins by symbol/name
+- `GET /api/coin/data` - Get detailed coin market data
+- `GET /api/coin/chart` - Get historical price data for charts
+- `GET /api/coin/prices` - Get multiple coin prices
 - `POST /binancep2p` - Proxy Binance P2P requests
 - `GET /health` - Health check
 
@@ -80,13 +84,23 @@ This bot uses a **hybrid architecture** to ensure compatibility with Cloudflare 
 
 ## ⚙️ Environment Variables
 
+### Cloudflare Worker Environment
 Set these in your Cloudflare Worker environment:
 
 | Variable | Description |
 |----------|-------------|
 | `TELEGRAM_BOT_TOKEN` | Your Telegram bot token from [BotFather](https://t.me/BotFather) |
-| `COINMARKETCAP_API_KEY` | Your CoinMarketCap API key from [CoinMarketCap API](https://coinmarketcap.com/api/) |
 | `BOT_CACHE` | Cloudflare KV namespace binding for caching API responses |
+
+### Backend (Node.js) Environment
+Set these in your backend deployment (Render, etc.):
+
+| Variable | Description |
+|----------|-------------|
+| `COINMARKETCAP_API_KEY` | Your CoinMarketCap API key from [CoinMarketCap API](https://coinmarketcap.com/api/) |
+| `PORT` | Port for the server (usually set automatically by hosting provider) |
+
+**Note**: The CoinMarketCap API key is now **only** used by the backend server, ensuring proper security separation.
 
 ---
 
@@ -109,6 +123,7 @@ Set these in your Cloudflare Worker environment:
    ```
 
 2. **Configure Environment Variables** on Render:
+   - Set `COINMARKETCAP_API_KEY` to your CoinMarketCap API key
    - Set `PORT` to the port provided by Render (usually automatic)
    - The backend will be accessible at your Render URL (e.g., `https://my-telegram-bot-backend.onrender.com`)
 
