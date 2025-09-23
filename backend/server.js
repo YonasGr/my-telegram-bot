@@ -2,6 +2,7 @@
 import express from "express";
 import fetch from "node-fetch";
 import { generateChartImageUrl, generateCandlestickChart, generateComparisonChart } from "./charts.js";
+import { searchCoinSymbol, getCoinData, getCoinMarketChart, getMultipleCoinPrices } from "./coinmarketcap.js";
 
 const app = express();
 
@@ -123,6 +124,79 @@ const validateP2PRequest = (req) => {
   // *** The 'asset' validation check has been removed. ***
   // *** This allows the user to request any asset. ***
 };
+
+// CoinMarketCap API endpoints
+app.get('/api/coin/search', async (req, res) => {
+  try {
+    const { symbol } = req.query;
+    
+    if (!symbol) {
+      return res.status(400).json({ error: 'Symbol parameter is required' });
+    }
+    
+    const result = await searchCoinSymbol(symbol);
+    
+    if (!result) {
+      return res.status(404).json({ error: 'Cryptocurrency not found' });
+    }
+    
+    res.json({ success: true, data: result });
+  } catch (error) {
+    console.error('Coin search error:', error);
+    res.status(500).json({ error: 'Failed to search coin', message: error.message });
+  }
+});
+
+app.get('/api/coin/data', async (req, res) => {
+  try {
+    const { coinId } = req.query;
+    
+    if (!coinId) {
+      return res.status(400).json({ error: 'coinId parameter is required' });
+    }
+    
+    const result = await getCoinData(coinId);
+    res.json({ success: true, data: result });
+  } catch (error) {
+    console.error('Coin data error:', error);
+    res.status(500).json({ error: 'Failed to get coin data', message: error.message });
+  }
+});
+
+app.get('/api/coin/chart', async (req, res) => {
+  try {
+    const { coinId, days = 7 } = req.query;
+    
+    if (!coinId) {
+      return res.status(400).json({ error: 'coinId parameter is required' });
+    }
+    
+    const result = await getCoinMarketChart(coinId, parseInt(days));
+    res.json({ success: true, data: result });
+  } catch (error) {
+    console.error('Coin chart error:', error);
+    res.status(500).json({ error: 'Failed to get coin chart data', message: error.message });
+  }
+});
+
+app.get('/api/coin/prices', async (req, res) => {
+  try {
+    const { coinIds, vsCurrencies = 'USD' } = req.query;
+    
+    if (!coinIds) {
+      return res.status(400).json({ error: 'coinIds parameter is required' });
+    }
+    
+    const coinIdsArray = coinIds.split(',');
+    const vsCurrenciesArray = vsCurrencies.split(',');
+    
+    const result = await getMultipleCoinPrices(coinIdsArray, vsCurrenciesArray);
+    res.json({ success: true, data: result });
+  } catch (error) {
+    console.error('Coin prices error:', error);
+    res.status(500).json({ error: 'Failed to get coin prices', message: error.message });
+  }
+});
 
 // Health check endpoint
 app.get('/health', (req, res) => {
