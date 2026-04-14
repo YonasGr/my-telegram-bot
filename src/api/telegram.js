@@ -19,7 +19,7 @@ export async function sendMessage(env, chatId, text, parseMode = 'HTML', replyMa
       chat_id: chatId,
       text: text,
       parse_mode: parseMode,
-      disable_web_page_preview: true,
+      link_preview_options: { is_disabled: true },
     };
 
     if (replyMarkup) {
@@ -129,7 +129,7 @@ export async function editMessage(env, chatId, messageId, text, parseMode = 'HTM
       message_id: messageId,
       text: text,
       parse_mode: parseMode,
-      disable_web_page_preview: true
+      link_preview_options: { is_disabled: true },
     };
 
     if (replyMarkup) {

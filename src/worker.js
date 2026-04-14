@@ -91,11 +91,11 @@ export default {
       const isAllowed = await checkRateLimit(env, userId, 15, 60); // 15 requests per minute
       if (!isAllowed) {
         console.log(`Rate limit exceeded for user ${userId} (${userName})`);
-        await sendMessage(env, chatId, 
-          `${EMOJIS.WARNING} Too many requests\\! Please wait a minute before trying again.
+        await sendMessage(env, chatId,
+          `${EMOJIS.WARNING} ${bold('Too many requests!')} Please wait a minute before trying again.
 
-*Rate limit:* 15 requests per minute per user
-*Tip:* Use the inline keyboards to reduce command typing\\!`, 'HTML');
+${bold('Rate limit:')} 15 requests per minute per user
+${bold('Tip:')} Use the inline keyboards to reduce command typing.`, 'HTML');
         return new Response('ok');
       }
 
@@ -120,10 +120,10 @@ export default {
       // Try to send error message to user if we have a chat ID
       if (error.chatId) {
         try {
-          await sendMessage(env, error.chatId, 
+          await sendMessage(env, error.chatId,
             `${EMOJIS.ERROR} An unexpected error occurred. Please try again or contact support if this persists.
 
-*Error ID:* ${Date.now()}`, 'HTML');
+${bold('Error ID:')} ${Date.now()}`, 'HTML');
         } catch (sendError) {
           console.error("Could not send error message to user:", sendError);
         }

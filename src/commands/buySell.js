@@ -3,44 +3,29 @@
  */
 
 import { sendMessage, sendLoadingMessage, updateLoadingMessage } from '../api/telegram.js';
-import { getP2PDataWithCache, getBestP2PRate } from '../api/binanceP2P.js';
+import { getP2PDataWithCache } from '../api/binanceP2P.js';
 import { validateAmount, validateP2PRate } from '../utils/validators.js';
-import { safeFormatNumber, bold, escapeHTML, formatNumber } from '../utils/formatters.js';
+import { safeFormatNumber, bold, escapeHTML } from '../utils/formatters.js';
 import { EMOJIS } from '../config/constants.js';
 
-/**
- * Handles /buy command for finding best crypto buying rates
- * @param {object} env - Cloudflare environment
- * @param {string|number} chatId - Chat ID
- * @param {string[]} args - Command arguments [amount, asset, fiat]
- * @returns {Promise<void>}
- */
 export async function handleBuy(env, chatId, args) {
   try {
-    // Default values
     const amount = args[1] ? parseFloat(args[1]) : null;
     const asset = (args[2] || 'USDT').toUpperCase();
     const fiat = (args[3] || 'ETB').toUpperCase();
 
-    // Validate arguments
     if (!amount) {
-      const helpMessage = `${EMOJIS.ERROR} ${bold('Buy Command Help')}
+      await sendMessage(env, chatId, `${EMOJIS.ERROR} ${bold('Buy Command Help')}
 
 ${bold(`${EMOJIS.MONEY} Format:`)}
 <code>/buy [amount] [asset] [fiat]</code>
 
-${bold('📝 Examples:')}
-• <code>/buy 100 USDT ETB</code> - Buy 100 USDT with ETB
-• <code>/buy 0.01 BTC USD</code> - Buy 0.01 BTC with USD
-• <code>/buy 500 USDT</code> - Buy 500 USDT with ETB (default)
+${bold('Examples:')}
+• <code>/buy 100 USDT ETB</code>
+• <code>/buy 0.01 BTC USD</code>
+• <code>/buy 500 USDT</code>
 
-${bold('💡 Notes:')}
-• Amount is required
-• Default asset: USDT
-• Default fiat: ETB
-• Uses live Binance P2P rates`;
-
-      await sendMessage(env, chatId, helpMessage, 'HTML');
+${bold('Notes:')} Default asset is USDT, default fiat is ETB.`, 'HTML');
       return;
     }
 
@@ -52,113 +37,75 @@ ${bold('💡 Notes:')}
 
     const rateValidation = validateP2PRate(amount, asset, fiat);
     if (!rateValidation.isValid) {
-      const errorMessage = `${EMOJIS.ERROR} *Buy Request Errors:*
-
-${rateValidation.errors.map(err => `• ${err}`).join('\n')}
-
-*${EMOJIS.CHART} Supported:*
-• *Assets:* USDT, BTC, ETH, BNB, BUSD  
-• *Fiats:* ETB, USD, EUR, GBP, NGN, KES, GHS`;
-
-      await sendMessage(env, chatId, errorMessage, 'HTML');
+      await sendMessage(env, chatId,
+        `${EMOJIS.ERROR} ${bold('Buy Request Errors:')}\n\n${rateValidation.errors.map(e => `• ${escapeHTML(e)}`).join('\n')}`,
+        'HTML');
       return;
     }
 
-    // Send loading message
-    const loadingMsg = await sendLoadingMessage(env, chatId, 
+    const loadingMsg = await sendLoadingMessage(env, chatId,
       `${EMOJIS.LOADING} Finding best rates to buy ${amount} ${asset} with ${fiat}...`);
 
     try {
-      // Get P2P data for buying (user wants to buy crypto, so they look at SELL offers from traders)
       const data = await getP2PDataWithCache(env, asset, fiat, 'SELL', 20, 1);
 
       if (!data?.data?.data || data.data.data.length === 0) {
-        const noDataMessage = `${EMOJIS.ERROR} *No buying options available*
+        const msg = `${EMOJIS.ERROR} ${bold('No buying options available')}
 
-No active offers to buy *${asset}* with *${fiat}* right now.
-
-*${EMOJIS.CHART} Try:*
-• Different asset (USDT is most liquid)
-• Popular fiat pairs (ETB, USD)
-• Check again in a few minutes`;
-
+No active offers to buy ${bold(asset)} with ${bold(fiat)} right now.
+Try USDT (most liquid) or check again in a few minutes.`;
         if (loadingMsg?.result?.message_id) {
-          await updateLoadingMessage(env, chatId, loadingMsg.result.message_id, noDataMessage, 'HTML');
+          await updateLoadingMessage(env, chatId, loadingMsg.result.message_id, msg, 'HTML');
         } else {
-          await sendMessage(env, chatId, noDataMessage, 'HTML');
+          await sendMessage(env, chatId, msg, 'HTML');
         }
         return;
       }
 
-      // Find best rates and calculate costs
       const offers = data.data.data.slice(0, 5);
       const bestOffer = offers[0];
-      const fifthBestOffer = offers[4] || offers[offers.length - 1];
-      
+      const worstOffer = offers[offers.length - 1];
+
       const bestRate = parseFloat(bestOffer.adv.price);
-      const conservativeRate = parseFloat(fifthBestOffer.adv.price);
-      const averageRate = offers.reduce((sum, offer) => sum + parseFloat(offer.adv.price), 0) / offers.length;
-      
-      const bestCost = amount * bestRate;
-      const conservativeCost = amount * conservativeRate;
-      const averageCost = amount * averageRate;
+      const conservativeRate = parseFloat(worstOffer.adv.price);
+      const averageRate = offers.reduce((s, o) => s + parseFloat(o.adv.price), 0) / offers.length;
 
-      let buyMessage = `${EMOJIS.MONEY} *Buy ${amount} ${asset} with ${fiat}*
+      const spread = ((conservativeRate - bestRate) / bestRate) * 100;
 
-*💰 Cost Analysis:*
-• *Best rate:* ${safeFormatNumber(bestCost, 2)} ${fiat} (${safeFormatNumber(bestRate, 2)} per ${asset})
-• *Conservative:* ${safeFormatNumber(conservativeCost, 2)} ${fiat} (${safeFormatNumber(conservativeRate, 2)} per ${asset})
-• *Average rate:* ${safeFormatNumber(averageCost, 2)} ${fiat} (${safeFormatNumber(averageRate, 2)} per ${asset})
+      let buyMessage = `${EMOJIS.MONEY} ${bold(`Buy ${amount} ${asset} with ${fiat}`)}
 
-*🏆 Best Offer:*
-👤 *Trader:* ${escapeHTML(bestOffer.advertiser.nickName)}
-📊 *Available:* ${safeFormatNumber(bestOffer.adv.surplusAmount)} ${asset}
-📈 *Limits:* ${safeFormatNumber(bestOffer.adv.minSingleTransAmount)} - ${safeFormatNumber(bestOffer.adv.maxSingleTransAmount)} ${fiat}
-⭐ *Orders:* ${escapeHTML(bestOffer.advertiser.monthOrderCount.toString())} (${safeFormatNumber(bestOffer.advertiser.monthFinishRate * 100, 1)}% success)`;
+<blockquote>${bold('Cost Analysis:')}
+• ${bold('Best rate:')} ${safeFormatNumber(amount * bestRate, 2)} ${fiat} @ ${safeFormatNumber(bestRate, 2)}/${asset}
+• ${bold('Average:')} ${safeFormatNumber(amount * averageRate, 2)} ${fiat} @ ${safeFormatNumber(averageRate, 2)}/${asset}
+• ${bold('Conservative:')} ${safeFormatNumber(amount * conservativeRate, 2)} ${fiat} @ ${safeFormatNumber(conservativeRate, 2)}/${asset}</blockquote>
 
-      // Add payment methods if available
+${bold('Best Offer:')}
+👤 ${bold('Trader:')} ${escapeHTML(bestOffer.advertiser.nickName)}
+📦 ${bold('Available:')} ${safeFormatNumber(bestOffer.adv.surplusAmount)} ${asset}
+📏 ${bold('Limits:')} ${safeFormatNumber(bestOffer.adv.minSingleTransAmount)} – ${safeFormatNumber(bestOffer.adv.maxSingleTransAmount)} ${fiat}
+⭐ ${bold('Orders:')} ${escapeHTML(String(bestOffer.advertiser.monthOrderCount))} (${safeFormatNumber(bestOffer.advertiser.monthFinishRate * 100, 1)}% success)`;
+
       if (bestOffer.adv.tradeMethods?.length > 0) {
-        const methods = bestOffer.adv.tradeMethods.map(m => m.tradeMethodName).join(", ");
-        buyMessage += `\n🏦 *Methods:* ${methods}`;
+        buyMessage += `\n🏦 ${bold('Methods:')} ${escapeHTML(bestOffer.adv.tradeMethods.map(m => m.tradeMethodName).join(', '))}`;
       }
 
-      const finalMessage = `${buyMessage}
+      buyMessage += `\n\n${bold('Market Insight:')} Spread across top 5 offers: ${safeFormatNumber(spread, 1)}%
 
-${EMOJIS.CHART} *Market Insight:*
-Price difference between best and 5th offer: ${safeFormatNumber(((conservativeRate - bestRate) / bestRate) * 100, 1)}%
-
-${EMOJIS.REFRESH} *Live data from Binance P2P*`;
+${EMOJIS.REFRESH} ${bold('Live data from Binance P2P')}`;
 
       if (loadingMsg?.result?.message_id) {
-        await updateLoadingMessage(env, chatId, loadingMsg.result.message_id, finalMessage, 'HTML');
+        await updateLoadingMessage(env, chatId, loadingMsg.result.message_id, buyMessage, 'HTML');
       } else {
-        await sendMessage(env, chatId, finalMessage, 'HTML');
+        await sendMessage(env, chatId, buyMessage, 'HTML');
       }
 
     } catch (apiError) {
-      console.error("Buy API error:", apiError);
-      
-      let errorMessage = `${EMOJIS.WARNING} *Could not fetch buying rates*
+      console.error('Buy API error:', apiError);
+      const errorMessage = `${EMOJIS.WARNING} ${bold('Could not fetch buying rates')}
 
-${escapeHTML(apiError.message)}`;
+${escapeHTML(apiError.message)}
 
-      if (apiError.message.includes('rate limit')) {
-        errorMessage = `${EMOJIS.WARNING} *Service Rate Limited*
-
-⚠️ P2P service rate limit exceeded. Please try again in a minute.
-
-${bold('Rate limits help:')}
-• Keep service fast and reliable
-• Prevent system overload  
-• Ensure fair access for all users`;
-      }
-
-      errorMessage += `
-
-*${EMOJIS.CHART} Suggestions:*
-• Wait a moment and try again
-• Try <code>/p2p ${asset} ${fiat} SELL</code> for detailed view
-• Use popular pairs like USDT/ETB`;
+${bold('Try:')} <code>/p2p ${asset} ${fiat} SELL</code> for detailed view`;
 
       if (loadingMsg?.result?.message_id) {
         await updateLoadingMessage(env, chatId, loadingMsg.result.message_id, errorMessage, 'HTML');
@@ -166,46 +113,30 @@ ${bold('Rate limits help:')}
         await sendMessage(env, chatId, errorMessage, 'HTML');
       }
     }
-
   } catch (error) {
-    console.error("Buy command error:", error);
+    console.error('Buy command error:', error);
     await sendMessage(env, chatId, `${EMOJIS.ERROR} Error processing buy request: ${escapeHTML(error.message)}`, 'HTML');
   }
 }
 
-/**
- * Handles /sell command for finding best crypto selling rates  
- * @param {object} env - Cloudflare environment
- * @param {string|number} chatId - Chat ID
- * @param {string[]} args - Command arguments [amount, asset, fiat]
- * @returns {Promise<void>}
- */
 export async function handleSell(env, chatId, args) {
   try {
-    // Parse arguments - handle both old format (/sell 50) and new format (/sell 50 USDT ETB)
     const amount = args[1] ? parseFloat(args[1]) : null;
     const asset = (args[2] || 'USDT').toUpperCase();
     const fiat = (args[3] || 'ETB').toUpperCase();
 
-    // Validate arguments
     if (!amount) {
-      const helpMessage = `${EMOJIS.ERROR} *Sell Command Help*
+      await sendMessage(env, chatId, `${EMOJIS.ERROR} ${bold('Sell Command Help')}
 
-*${EMOJIS.MONEY} Format:*
+${bold(`${EMOJIS.MONEY} Format:`)}
 <code>/sell [amount] [asset] [fiat]</code>
 
-*📝 Examples:*
-• <code>/sell 100 USDT ETB</code> - Sell 100 USDT for ETB
-• <code>/sell 0.01 BTC USD</code> - Sell 0.01 BTC for USD  
-• <code>/sell 50</code> - Sell 50 USDT for ETB (legacy format)
+${bold('Examples:')}
+• <code>/sell 100 USDT ETB</code>
+• <code>/sell 0.01 BTC USD</code>
+• <code>/sell 50</code>
 
-*💡 Notes:*
-• Amount is required
-• Default asset: USDT
-• Default fiat: ETB
-• Uses live Binance P2P rates`;
-
-      await sendMessage(env, chatId, helpMessage, 'HTML');
+${bold('Notes:')} Default asset is USDT, default fiat is ETB.`, 'HTML');
       return;
     }
 
@@ -217,113 +148,75 @@ export async function handleSell(env, chatId, args) {
 
     const rateValidation = validateP2PRate(amount, asset, fiat);
     if (!rateValidation.isValid) {
-      const errorMessage = `${EMOJIS.ERROR} *Sell Request Errors:*
-
-${rateValidation.errors.map(err => `• ${err}`).join('\n')}
-
-*${EMOJIS.CHART} Supported:*
-• *Assets:* USDT, BTC, ETH, BNB, BUSD
-• *Fiats:* ETB, USD, EUR, GBP, NGN, KES, GHS`;
-
-      await sendMessage(env, chatId, errorMessage, 'HTML');
+      await sendMessage(env, chatId,
+        `${EMOJIS.ERROR} ${bold('Sell Request Errors:')}\n\n${rateValidation.errors.map(e => `• ${escapeHTML(e)}`).join('\n')}`,
+        'HTML');
       return;
     }
 
-    // Send loading message
-    const loadingMsg = await sendLoadingMessage(env, chatId, 
+    const loadingMsg = await sendLoadingMessage(env, chatId,
       `${EMOJIS.LOADING} Finding best rates to sell ${amount} ${asset} for ${fiat}...`);
 
     try {
-      // Get P2P data for selling (user wants to sell crypto, so they look at BUY offers from traders)
       const data = await getP2PDataWithCache(env, asset, fiat, 'BUY', 20, 1);
 
       if (!data?.data?.data || data.data.data.length === 0) {
-        const noDataMessage = `${EMOJIS.ERROR} *No selling options available*
+        const msg = `${EMOJIS.ERROR} ${bold('No selling options available')}
 
-No active offers to sell *${asset}* for *${fiat}* right now.
-
-*${EMOJIS.CHART} Try:*
-• Different asset (USDT is most liquid)
-• Popular fiat pairs (ETB, USD)
-• Check again in a few minutes`;
-
+No active offers to sell ${bold(asset)} for ${bold(fiat)} right now.
+Try USDT (most liquid) or check again in a few minutes.`;
         if (loadingMsg?.result?.message_id) {
-          await updateLoadingMessage(env, chatId, loadingMsg.result.message_id, noDataMessage, 'HTML');
+          await updateLoadingMessage(env, chatId, loadingMsg.result.message_id, msg, 'HTML');
         } else {
-          await sendMessage(env, chatId, noDataMessage, 'HTML');
+          await sendMessage(env, chatId, msg, 'HTML');
         }
         return;
       }
 
-      // Calculate earnings based on different offers
       const offers = data.data.data.slice(0, 5);
       const bestOffer = offers[0];
-      const fifthBestOffer = offers[4] || offers[offers.length - 1];
-      
+      const worstOffer = offers[offers.length - 1];
+
       const bestRate = parseFloat(bestOffer.adv.price);
-      const conservativeRate = parseFloat(fifthBestOffer.adv.price); 
-      const averageRate = offers.reduce((sum, offer) => sum + parseFloat(offer.adv.price), 0) / offers.length;
-      
-      const bestEarnings = amount * bestRate;
-      const conservativeEarnings = amount * conservativeRate;
-      const averageEarnings = amount * averageRate;
+      const conservativeRate = parseFloat(worstOffer.adv.price);
+      const averageRate = offers.reduce((s, o) => s + parseFloat(o.adv.price), 0) / offers.length;
 
-      let sellMessage = `${EMOJIS.MONEY} *Sell ${amount} ${asset} for ${fiat}*
+      const spread = ((bestRate - conservativeRate) / bestRate) * 100;
 
-*💰 Earnings Analysis:*
-• *Best rate:* ${safeFormatNumber(bestEarnings, 2)} ${fiat} (${safeFormatNumber(bestRate, 2)} per ${asset})
-• *Conservative:* ${safeFormatNumber(conservativeEarnings, 2)} ${fiat} (${safeFormatNumber(conservativeRate, 2)} per ${asset})  
-• *Average rate:* ${safeFormatNumber(averageEarnings, 2)} ${fiat} (${safeFormatNumber(averageRate, 2)} per ${asset})
+      let sellMessage = `${EMOJIS.MONEY} ${bold(`Sell ${amount} ${asset} for ${fiat}`)}
 
-*🏆 Best Offer:*
-👤 *Trader:* ${escapeHTML(bestOffer.advertiser.nickName)}
-📊 *Wants:* ${safeFormatNumber(bestOffer.adv.surplusAmount)} ${asset}
-📈 *Limits:* ${safeFormatNumber(bestOffer.adv.minSingleTransAmount)} - ${safeFormatNumber(bestOffer.adv.maxSingleTransAmount)} ${fiat}
-⭐ *Orders:* ${escapeHTML(bestOffer.advertiser.monthOrderCount.toString())} (${safeFormatNumber(bestOffer.advertiser.monthFinishRate * 100, 1)}% success)`;
+<blockquote>${bold('Earnings Analysis:')}
+• ${bold('Best rate:')} ${safeFormatNumber(amount * bestRate, 2)} ${fiat} @ ${safeFormatNumber(bestRate, 2)}/${asset}
+• ${bold('Average:')} ${safeFormatNumber(amount * averageRate, 2)} ${fiat} @ ${safeFormatNumber(averageRate, 2)}/${asset}
+• ${bold('Conservative:')} ${safeFormatNumber(amount * conservativeRate, 2)} ${fiat} @ ${safeFormatNumber(conservativeRate, 2)}/${asset}</blockquote>
 
-      // Add payment methods if available
+${bold('Best Offer:')}
+👤 ${bold('Trader:')} ${escapeHTML(bestOffer.advertiser.nickName)}
+📦 ${bold('Wants:')} ${safeFormatNumber(bestOffer.adv.surplusAmount)} ${asset}
+📏 ${bold('Limits:')} ${safeFormatNumber(bestOffer.adv.minSingleTransAmount)} – ${safeFormatNumber(bestOffer.adv.maxSingleTransAmount)} ${fiat}
+⭐ ${bold('Orders:')} ${escapeHTML(String(bestOffer.advertiser.monthOrderCount))} (${safeFormatNumber(bestOffer.advertiser.monthFinishRate * 100, 1)}% success)`;
+
       if (bestOffer.adv.tradeMethods?.length > 0) {
-        const methods = bestOffer.adv.tradeMethods.map(m => m.tradeMethodName).join(", ");
-        sellMessage += `\n🏦 *Methods:* ${methods}`;
+        sellMessage += `\n🏦 ${bold('Methods:')} ${escapeHTML(bestOffer.adv.tradeMethods.map(m => m.tradeMethodName).join(', '))}`;
       }
 
-      const finalMessage = `${sellMessage}
+      sellMessage += `\n\n${bold('Market Insight:')} Spread across top 5 offers: ${safeFormatNumber(spread, 1)}%
 
-${EMOJIS.CHART} *Market Insight:*
-Price difference between best and 5th offer: ${safeFormatNumber(((bestRate - conservativeRate) / bestRate) * 100, 1)}%
-
-${EMOJIS.REFRESH} *Live data from Binance P2P*`;
+${EMOJIS.REFRESH} ${bold('Live data from Binance P2P')}`;
 
       if (loadingMsg?.result?.message_id) {
-        await updateLoadingMessage(env, chatId, loadingMsg.result.message_id, finalMessage, 'HTML');
+        await updateLoadingMessage(env, chatId, loadingMsg.result.message_id, sellMessage, 'HTML');
       } else {
-        await sendMessage(env, chatId, finalMessage, 'HTML');
+        await sendMessage(env, chatId, sellMessage, 'HTML');
       }
 
     } catch (apiError) {
-      console.error("Sell API error:", apiError);
-      
-      let errorMessage = `${EMOJIS.WARNING} *Could not fetch selling rates*
+      console.error('Sell API error:', apiError);
+      const errorMessage = `${EMOJIS.WARNING} ${bold('Could not fetch selling rates')}
 
-${escapeHTML(apiError.message)}`;
+${escapeHTML(apiError.message)}
 
-      if (apiError.message.includes('rate limit')) {
-        errorMessage = `${EMOJIS.WARNING} *Service Rate Limited*
-
-⚠️ P2P service rate limit exceeded. Please try again in a minute.
-
-${bold('Rate limits help:')}
-• Keep service fast and reliable
-• Prevent system overload
-• Ensure fair access for all users`;
-      }
-
-      errorMessage += `
-
-*${EMOJIS.CHART} Suggestions:*
-• Wait a moment and try again
-• Try <code>/p2p ${asset} ${fiat} BUY</code> for detailed view  
-• Use popular pairs like USDT/ETB`;
+${bold('Try:')} <code>/p2p ${asset} ${fiat} BUY</code> for detailed view`;
 
       if (loadingMsg?.result?.message_id) {
         await updateLoadingMessage(env, chatId, loadingMsg.result.message_id, errorMessage, 'HTML');
@@ -331,9 +224,8 @@ ${bold('Rate limits help:')}
         await sendMessage(env, chatId, errorMessage, 'HTML');
       }
     }
-
   } catch (error) {
-    console.error("Sell command error:", error);
+    console.error('Sell command error:', error);
     await sendMessage(env, chatId, `${EMOJIS.ERROR} Error processing sell request: ${escapeHTML(error.message)}`, 'HTML');
   }
 }
