@@ -113,6 +113,76 @@ export async function sendPhoto(env, chatId, photoUrl, caption = '', parseMode =
 }
 
 /**
+ * Sends a photo from a Blob/buffer via multipart upload
+ * @param {object} env - Cloudflare environment
+ * @param {string|number} chatId - Chat ID
+ * @param {Blob} photoBlob - PNG image blob
+ * @param {string} caption - Photo caption
+ * @param {string} parseMode - Parse mode
+ * @param {object} replyMarkup - Inline keyboard markup
+ * @param {string} fallbackUrl - URL to use if blob upload fails
+ * @returns {Promise<object|null>} Telegram API response
+ */
+export async function sendPhotoBlob(env, chatId, photoBlob, caption = '', parseMode = 'HTML', replyMarkup = null, fallbackUrl = null) {
+  try {
+    const form = new FormData();
+    form.append('chat_id', String(chatId));
+    form.append('photo', photoBlob, 'chart.png');
+    if (caption) {
+      form.append('caption', caption);
+      form.append('parse_mode', parseMode);
+    }
+    if (replyMarkup) {
+      form.append('reply_markup', JSON.stringify(replyMarkup));
+    }
+
+    const response = await fetch(`${API_URLS.TELEGRAM_BOT}${env.TELEGRAM_BOT_TOKEN}/sendPhoto`, {
+      method: 'POST',
+      body: form,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Telegram sendPhotoBlob error ${response.status}:`, errorText);
+      // Fall back to URL-based send if we have one
+      if (fallbackUrl) {
+        return sendPhoto(env, chatId, fallbackUrl, caption, parseMode, replyMarkup);
+      }
+      return null;
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error sending photo blob:', error);
+    if (fallbackUrl) {
+      return sendPhoto(env, chatId, fallbackUrl, caption, parseMode, replyMarkup);
+    }
+    return null;
+  }
+}
+
+/**
+ * Deletes a message
+ * @param {object} env - Cloudflare environment
+ * @param {string|number} chatId - Chat ID
+ * @param {number} messageId - Message ID to delete
+ * @returns {Promise<boolean>} Success status
+ */
+export async function deleteMessage(env, chatId, messageId) {
+  try {
+    const response = await fetch(`${API_URLS.TELEGRAM_BOT}${env.TELEGRAM_BOT_TOKEN}/deleteMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, message_id: messageId }),
+    });
+    return response.ok;
+  } catch (error) {
+    console.error('Error deleting message:', error);
+    return false;
+  }
+}
+
+/**
  * Edits an existing message
  * @param {object} env - Cloudflare environment
  * @param {string|number} chatId - Chat ID
@@ -204,19 +274,25 @@ export function createInlineKeyboard(buttons) {
 }
 
 /**
- * Creates a timeframe selection keyboard
+ * Creates a timeframe selection keyboard with active indicator
  * @param {string} command - Base command for callbacks
- * @param {string} asset - Asset symbol for the command
+ * @param {string} asset - Asset symbol / coin ID
+ * @param {number} activeDays - Currently active timeframe (1, 7, or 30)
  * @returns {object} Inline keyboard markup
  */
-export function createTimeframeKeyboard(command, asset) {
+export function createTimeframeKeyboard(command, asset, activeDays = 7) {
   const timeframes = [
-    { text: '1 Day', callback_data: `${command}_${asset}_1` },
-    { text: '7 Days', callback_data: `${command}_${asset}_7` },
-    { text: '30 Days', callback_data: `${command}_${asset}_30` }
+    { label: '1D',  days: 1  },
+    { label: '7D',  days: 7  },
+    { label: '30D', days: 30 },
   ];
 
-  return createInlineKeyboard([timeframes]);
+  const buttons = timeframes.map(tf => ({
+    text: tf.days === activeDays ? `● ${tf.label}` : tf.label,
+    callback_data: `${command}_${asset}_${tf.days}`,
+  }));
+
+  return createInlineKeyboard([buttons]);
 }
 
 /**

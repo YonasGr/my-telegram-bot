@@ -8,13 +8,21 @@
     "start": "node server.js",
     "dev": "nodemon server.js"
   },
-  "keywords": ["binance", "p2p", "proxy", "api"],
+  "keywords": [
+    "binance",
+    "p2p",
+    "proxy",
+    "api"
+  ],
   "author": "Your Name",
   "license": "MIT",
   "dependencies": {
+    "chart.js": "^4.5.1",
+    "chartjs-node-canvas": "^5.0.0",
     "cors": "^2.8.5",
     "express": "^4.18.2",
     "express-rate-limit": "^7.1.5",
+    "lightweight-charts": "^5.1.0",
     "node-fetch": "^3.3.2"
   },
   "devDependencies": {

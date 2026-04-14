@@ -1,7 +1,7 @@
 // server.js
 import express from "express";
 import fetch from "node-fetch";
-import { generateChartImageUrl, generateCandlestickChart, generateComparisonChart } from "./charts.js";
+import { generateChartImageUrl, renderChartImage } from "./charts.js";
 import { searchCoinSymbol, getCoinData, getCoinMarketChart, getMultipleCoinPrices } from "./coinmarketcap.js";
 
 const app = express();
@@ -205,27 +205,20 @@ app.get('/health', (req, res) => {
 // Chart generation endpoints
 app.get('/api/chart', async (req, res) => {
   try {
-    const { prices, coinName, days = 7, width = 800, height = 400, backgroundColor = 'rgba(17,17,17,0.9)', lineColor = '#00ff88', fillColor = 'rgba(0, 255, 136, 0.1)' } = req.query;
-    
+    const { prices, coinName, days = 7 } = req.query;
+
     if (!prices) {
       return res.status(400).json({ error: 'Price data is required' });
     }
-    
+
     let pricesArray;
     try {
       pricesArray = JSON.parse(prices);
     } catch (e) {
       return res.status(400).json({ error: 'Invalid price data format' });
     }
-    
-    const chartUrl = generateChartImageUrl(pricesArray, coinName || 'Cryptocurrency', parseInt(days), {
-      width: parseInt(width),
-      height: parseInt(height),
-      backgroundColor,
-      lineColor,
-      fillColor
-    });
-    
+
+    const chartUrl = generateChartImageUrl(pricesArray, coinName || 'Cryptocurrency', parseInt(days));
     res.json({ success: true, chartUrl });
   } catch (error) {
     console.error('Chart generation error:', error);
@@ -233,59 +226,30 @@ app.get('/api/chart', async (req, res) => {
   }
 });
 
-app.get('/api/candlestick-chart', async (req, res) => {
+// New: returns PNG image directly — used by the worker to upload to Telegram
+app.get('/api/chart/image', async (req, res) => {
   try {
-    const { ohlcData, coinName, days = 7, width = 800, height = 400, backgroundColor = 'rgba(17,17,17,0.9)' } = req.query;
-    
-    if (!ohlcData) {
-      return res.status(400).json({ error: 'OHLC data is required' });
-    }
-    
-    let ohlcArray;
-    try {
-      ohlcArray = JSON.parse(ohlcData);
-    } catch (e) {
-      return res.status(400).json({ error: 'Invalid OHLC data format' });
-    }
-    
-    const chartUrl = generateCandlestickChart(ohlcArray, coinName || 'Cryptocurrency', parseInt(days), {
-      width: parseInt(width),
-      height: parseInt(height),
-      backgroundColor
-    });
-    
-    res.json({ success: true, chartUrl });
-  } catch (error) {
-    console.error('Candlestick chart generation error:', error);
-    res.status(500).json({ error: 'Failed to generate candlestick chart', message: error.message });
-  }
-});
+    const { prices, coinName, days = 7 } = req.query;
 
-app.get('/api/comparison-chart', async (req, res) => {
-  try {
-    const { coinDataArray, days = 7, width = 800, height = 400, backgroundColor = 'rgba(17,17,17,0.9)' } = req.query;
-    
-    if (!coinDataArray) {
-      return res.status(400).json({ error: 'Coin data array is required' });
+    if (!prices) {
+      return res.status(400).json({ error: 'Price data is required' });
     }
-    
-    let coinArray;
+
+    let pricesArray;
     try {
-      coinArray = JSON.parse(coinDataArray);
+      pricesArray = JSON.parse(prices);
     } catch (e) {
-      return res.status(400).json({ error: 'Invalid coin data format' });
+      return res.status(400).json({ error: 'Invalid price data format' });
     }
-    
-    const chartUrl = generateComparisonChart(coinArray, parseInt(days), {
-      width: parseInt(width),
-      height: parseInt(height),
-      backgroundColor
-    });
-    
-    res.json({ success: true, chartUrl });
+
+    const imageBuffer = await renderChartImage(pricesArray, coinName || 'Cryptocurrency', parseInt(days));
+
+    res.set('Content-Type', 'image/png');
+    res.set('Cache-Control', 'public, max-age=300'); // 5 min cache
+    res.send(imageBuffer);
   } catch (error) {
-    console.error('Comparison chart generation error:', error);
-    res.status(500).json({ error: 'Failed to generate comparison chart', message: error.message });
+    console.error('Chart image generation error:', error);
+    res.status(500).json({ error: 'Failed to generate chart image', message: error.message });
   }
 });
 

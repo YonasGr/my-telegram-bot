@@ -1,148 +1,134 @@
 /**
- * Chart generation proxy - forwards requests to backend for Node.js compatibility
- * Ensures Cloudflare Workers compatibility by removing direct chart generation
+ * Chart proxy — fetches rendered PNG from backend and returns it as a Blob
+ * for direct upload to Telegram via multipart/form-data.
  */
 
 import { API_URLS } from '../config/constants.js';
 
 /**
- * Generates a chart image URL by proxying to backend
- * @param {Array} prices - Array of price data [timestamp, price]
- * @param {string} coinName - Name of the cryptocurrency
- * @param {number} days - Number of days for the chart
- * @param {object} options - Additional chart options
- * @returns {Promise<string>} Chart image URL
+ * Fetches a rendered chart PNG from the backend.
+ * Returns a Blob that can be uploaded directly to Telegram sendPhoto.
+ *
+ * @param {Array}  prices   - [[timestamp_ms, price], ...]
+ * @param {string} coinName - Display name for the coin
+ * @param {number} days     - Timeframe in days (1, 7, 30)
+ * @returns {Promise<Blob>} PNG image blob
  */
-export async function generateChartImageUrl(prices, coinName, days = 7, options = {}) {
-  if (!prices || prices.length === 0) {
-    throw new Error('Price data is required for chart generation');
-  }
+export async function fetchChartImage(prices, coinName, days = 7) {
+  if (!prices || prices.length === 0) throw new Error('Price data is required');
 
   const params = new URLSearchParams({
-    prices: JSON.stringify(prices),
+    prices:   JSON.stringify(prices),
     coinName: coinName || 'Cryptocurrency',
-    days: days.toString(),
-    ...Object.fromEntries(
-      Object.entries(options).map(([key, value]) => [key, value.toString()])
-    )
+    days:     days.toString(),
   });
 
-  try {
-    const response = await fetch(`${API_URLS.BACKEND_BASE}/api/chart?${params}`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'User-Agent': 'TelegramBot-ChartProxy/1.0'
-      }
-    });
+  const response = await fetch(`${API_URLS.BACKEND_BASE}/api/chart/image?${params}`, {
+    headers: { 'User-Agent': 'TelegramBot-Worker/2.0' },
+  });
 
-    if (!response.ok) {
-      throw new Error(`Backend chart generation failed: ${response.status}`);
-    }
-
-    const data = await response.json();
-    
-    if (!data.success || !data.chartUrl) {
-      throw new Error(data.error || 'Unknown error from backend');
-    }
-
-    return data.chartUrl;
-  } catch (error) {
-    console.error('Chart generation proxy error:', error);
-    throw new Error(`Failed to generate chart: ${error.message}`);
+  if (!response.ok) {
+    // Fallback: return null so caller can use QuickChart URL instead
+    console.error(`Chart image fetch failed: ${response.status}`);
+    return null;
   }
+
+  return response.blob();
 }
 
 /**
- * Generates a candlestick chart URL by proxying to backend
- * @param {Array} ohlcData - OHLC data array
- * @param {string} coinName - Cryptocurrency name
- * @param {number} days - Number of days
- * @param {object} options - Chart options
- * @returns {Promise<string>} Candlestick chart URL
+ * Fallback: returns a QuickChart URL (no backend needed).
+ * Used when the backend image endpoint is unavailable.
+ *
+ * @param {Array}  prices
+ * @param {string} coinName
+ * @param {number} days
+ * @returns {string} QuickChart URL
  */
-export async function generateCandlestickChart(ohlcData, coinName, days = 7, options = {}) {
-  if (!ohlcData || ohlcData.length === 0) {
-    throw new Error('OHLC data is required for candlestick chart generation');
-  }
+export function buildFallbackChartUrl(prices, coinName, days = 7) {
+  if (!prices || prices.length === 0) throw new Error('Price data is required');
 
-  const params = new URLSearchParams({
-    ohlcData: JSON.stringify(ohlcData),
-    coinName: coinName || 'Cryptocurrency',
-    days: days.toString(),
-    ...Object.fromEntries(
-      Object.entries(options).map(([key, value]) => [key, value.toString()])
-    )
+  const sampled = prices.length > 200
+    ? prices.filter((_, i) => i % Math.ceil(prices.length / 200) === 0)
+    : prices;
+
+  const values = sampled.map(p => p[1]);
+  const first  = values[0];
+  const last   = values[values.length - 1];
+  const pct    = ((last - first) / first) * 100;
+
+  const formatP = (v) => {
+    if (v >= 1e3) return '$' + (v / 1e3).toFixed(1) + 'k';
+    if (v >= 1)   return '$' + v.toFixed(2);
+    return '$' + v.toFixed(6);
+  };
+
+  const trend     = pct > 0.3 ? 'bull' : pct < -0.3 ? 'bear' : 'neutral';
+  const lineColor = trend === 'bull' ? '#26a69a' : trend === 'bear' ? '#ef5350' : '#7b8ab8';
+  const fillColor = trend === 'bull' ? 'rgba(38,166,154,0.1)' : trend === 'bear' ? 'rgba(239,83,80,0.1)' : 'rgba(123,138,184,0.1)';
+
+  const minV = Math.min(...values);
+  const maxV = Math.max(...values);
+  const pad  = (maxV - minV) * 0.05 || last * 0.01;
+
+  const n    = sampled.length;
+  const step = Math.max(1, Math.floor(n / 6));
+  const labels = sampled.map((p, i) => {
+    if (i % step !== 0 && i !== n - 1) return '';
+    const d = new Date(p[0]);
+    return days <= 1
+      ? d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
+      : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   });
 
-  try {
-    const response = await fetch(`${API_URLS.BACKEND_BASE}/api/candlestick-chart?${params}`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'User-Agent': 'TelegramBot-ChartProxy/1.0'
-      }
-    });
-
-    if (!response.ok) {
-      throw new Error(`Backend candlestick chart generation failed: ${response.status}`);
-    }
-
-    const data = await response.json();
-    
-    if (!data.success || !data.chartUrl) {
-      throw new Error(data.error || 'Unknown error from backend');
-    }
-
-    return data.chartUrl;
-  } catch (error) {
-    console.error('Candlestick chart generation proxy error:', error);
-    throw new Error(`Failed to generate candlestick chart: ${error.message}`);
-  }
-}
-
-/**
- * Generates a comparison chart for multiple cryptocurrencies by proxying to backend
- * @param {object[]} coinDataArray - Array of coin data objects
- * @param {number} days - Number of days
- * @param {object} options - Chart options
- * @returns {Promise<string>} Comparison chart URL
- */
-export async function generateComparisonChart(coinDataArray, days = 7, options = {}) {
-  if (!coinDataArray || coinDataArray.length === 0) {
-    throw new Error('Coin data array is required for comparison chart');
-  }
+  const cfg = {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        data: values,
+        borderColor: lineColor,
+        backgroundColor: fillColor,
+        fill: true,
+        tension: 0.3,
+        pointRadius: 0,
+        borderWidth: 2,
+      }],
+    },
+    options: {
+      animation: false,
+      plugins: {
+        legend: { display: false },
+        title: {
+          display: true,
+          text: `${coinName}  ·  ${days === 1 ? '24h' : days + 'd'}  ·  ${formatP(last)}  ·  ${(pct >= 0 ? '+' : '') + pct.toFixed(2) + '%'}`,
+          color: '#d1d4dc',
+          font: { size: 14, weight: 'bold' },
+        },
+      },
+      scales: {
+        x: {
+          grid: { color: 'rgba(42,46,57,0.8)' },
+          ticks: { color: '#b2b5be', font: { size: 10 }, maxTicksLimit: 7 },
+        },
+        y: {
+          position: 'right',
+          min: minV - pad,
+          max: maxV + pad,
+          grid: { color: 'rgba(42,46,57,0.8)' },
+          ticks: { color: '#b2b5be', font: { size: 10 }, maxTicksLimit: 7 },
+        },
+      },
+    },
+  };
 
   const params = new URLSearchParams({
-    coinDataArray: JSON.stringify(coinDataArray),
-    days: days.toString(),
-    ...Object.fromEntries(
-      Object.entries(options).map(([key, value]) => [key, value.toString()])
-    )
+    c:               JSON.stringify(cfg),
+    width:           '900',
+    height:          '500',
+    backgroundColor: '#131722',
+    devicePixelRatio: '2',
   });
 
-  try {
-    const response = await fetch(`${API_URLS.BACKEND_BASE}/api/comparison-chart?${params}`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'User-Agent': 'TelegramBot-ChartProxy/1.0'
-      }
-    });
-
-    if (!response.ok) {
-      throw new Error(`Backend comparison chart generation failed: ${response.status}`);
-    }
-
-    const data = await response.json();
-    
-    if (!data.success || !data.chartUrl) {
-      throw new Error(data.error || 'Unknown error from backend');
-    }
-
-    return data.chartUrl;
-  } catch (error) {
-    console.error('Comparison chart generation proxy error:', error);
-    throw new Error(`Failed to generate comparison chart: ${error.message}`);
-  }
+  return `https://quickchart.io/chart?${params}`;
 }

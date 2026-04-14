@@ -233,17 +233,17 @@ async function handleCallbackQuery(env, callbackQuery) {
     // Route callback to appropriate handler
     if (data.startsWith('p2p_')) {
       await handleP2PCallback(env, callbackQuery);
+      await answerCallbackQuery(env, id, '', false);
     } else if (data.startsWith('coin_')) {
+      // handleCoinCallback answers the callback query internally
       await handleCoinCallback(env, callbackQuery);
     } else if (data.startsWith('quick_')) {
       await handleQuickAction(env, callbackQuery);
+      await answerCallbackQuery(env, id, '', false);
     } else {
       console.log(`Unknown callback query: ${data}`);
-      await answerCallbackQuery(env, id, "Unknown action", false);
+      await answerCallbackQuery(env, id, 'Unknown action', false);
     }
-
-    // Always answer callback queries
-    await answerCallbackQuery(env, id, "", false);
 
   } catch (error) {
     console.error("Callback query error:", error);
